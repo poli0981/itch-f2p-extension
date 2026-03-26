@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset = "UTF-8">
+    <meta name = "viewport" content = "width=device-width, initial-scale=1.0">
+    <title>Settings – itch.io F2P Tracker</title>
+    <link rel = "stylesheet" href = "../shared/theme.css">
+    <link rel = "stylesheet" href = "settings.css">
+</head>
+<body>
+<div class = "page-container">
+    <header class = "page-header">
+        <div class = "flex items-center gap-md">
+            <svg
+                    class = "header-icon" width = "24" height = "24" viewBox = "0 0 24 24" fill = "none"
+                    stroke = "currentColor" stroke-width = "2" stroke-linecap = "round"
+            >
+                <circle cx = "12" cy = "12" r = "3"/>
+                <path d = "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+            <div>
+                <h1 class = "page-title">Settings</h1>
+                <p class = "page-subtitle">Configure GitHub, GPG signing, and preferences</p>
+            </div>
+        </div>
+        <button class = "btn btn-primary btn-sm" id = "saveBtn">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2.5" stroke-linecap = "round"
+            >
+                <path d = "M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points = "17 21 17 13 7 13 7 21"/>
+                <polyline points = "7 3 7 8 15 8"/>
+            </svg>
+            Save Settings
+        </button>
+    </header>
+
+    <!-- GitHub Connection -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+            </svg>
+            GitHub Connection
+        </h2>
+        <div class = "settings-grid">
+            <div class = "field-group">
+                <label class = "label" for = "github_owner">Repository Owner</label>
+                <input
+                        class = "input" type = "text" id = "github_owner" placeholder = "your-username"
+                        autocomplete = "off"
+                >
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "github_repo">Repository Name</label>
+                <input
+                        class = "input" type = "text" id = "github_repo" placeholder = "free-itch-games-list"
+                        autocomplete = "off"
+                >
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "github_branch">Branch</label>
+                <input class = "input" type = "text" id = "github_branch" placeholder = "main" autocomplete = "off">
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "github_token">Personal Access Token</label>
+                <div class = "input-with-action">
+                    <input
+                            class = "input" type = "password" id = "github_token" placeholder = "ghp_xxxxxxxxxxxx"
+                            autocomplete = "off"
+                    >
+                    <button class = "btn-icon" id = "toggleTokenBtn" title = "Show/hide token" type = "button">
+                        <svg
+                                width = "16" height = "16" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                                stroke-width = "2" stroke-linecap = "round"
+                        >
+                            <path d = "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                            <circle cx = "12" cy = "12" r = "3"/>
+                        </svg>
+                    </button>
+                </div>
+                <span class = "field-hint">Requires <code>repo</code> scope. <a
+                        href = "https://github.com/settings/tokens/new" target = "_blank" rel = "noopener"
+                >Create token &rarr;</a></span>
+            </div>
+        </div>
+        <button class = "btn btn-ghost btn-sm" id = "testConnectionBtn" style = "margin-top:var(--space-md)">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points = "22 4 12 14.01 9 11.01"/>
+            </svg>
+            Test Connection
+        </button>
+        <span class = "connection-status" id = "connectionStatus"></span>
+    </section>
+
+    <!-- Committer Identity -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx = "12" cy = "7" r = "4"/>
+            </svg>
+            Committer Identity
+        </h2>
+        <div class = "settings-grid">
+            <div class = "field-group">
+                <label class = "label" for = "committer_name">Name</label>
+                <input
+                        class = "input" type = "text" id = "committer_name" placeholder = "Your Name"
+                        autocomplete = "off"
+                >
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "committer_email">Email</label>
+                <input
+                        class = "input" type = "email" id = "committer_email" placeholder = "you@example.com"
+                        autocomplete = "off"
+                >
+            </div>
+        </div>
+    </section>
+
+    <!-- GPG Signing -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <rect x = "3" y = "11" width = "18" height = "11" rx = "2" ry = "2"/>
+                <path d = "M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            GPG Signing
+            <span class = "badge badge-info" style = "margin-left:8px; font-size:10px">Optional</span>
+        </h2>
+        <div class = "toggle-row">
+            <label class = "toggle-label" for = "gpg_enabled">Enable GPG commit signing</label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "gpg_enabled">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
+        <div class = "gpg-fields" id = "gpgFields" style = "display:none">
+            <div class = "field-group">
+                <label class = "label" for = "gpg_private_key">Armored Private Key</label>
+                <textarea
+                        class = "textarea" id = "gpg_private_key" rows = "5"
+                        placeholder = "-----BEGIN PGP PRIVATE KEY BLOCK-----&#10;...&#10;-----END PGP PRIVATE KEY BLOCK-----"
+                ></textarea>
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "gpg_passphrase">Passphrase</label>
+                <input
+                        class = "input" type = "password" id = "gpg_passphrase"
+                        placeholder = "Key passphrase (if encrypted)" autocomplete = "off"
+                >
+                <span class = "field-hint">Not stored. Used to decrypt key on import only.</span>
+            </div>
+            <button class = "btn btn-ghost btn-sm" id = "importKeyBtn">
+                <svg
+                        width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2" stroke-linecap = "round"
+                >
+                    <path d = "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points = "7 10 12 15 17 10"/>
+                    <line x1 = "12" y1 = "15" x2 = "12" y2 = "3"/>
+                </svg>
+                Import &amp; Validate Key
+            </button>
+            <div class = "gpg-key-info" id = "gpgKeyInfo" style = "display:none"></div>
+        </div>
+    </section>
+
+    <!-- Push Settings (includes push_format unique to itch.io) -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <line x1 = "12" y1 = "19" x2 = "12" y2 = "5"/>
+                <polyline points = "5 12 12 5 19 12"/>
+            </svg>
+            Push Settings
+        </h2>
+        <div class = "settings-grid">
+            <div class = "field-group">
+                <label class = "label" for = "auto_push_threshold">Auto-Push Threshold</label>
+                <input
+                        class = "input" type = "number" id = "auto_push_threshold" min = "0" max = "150"
+                        placeholder = "0"
+                >
+                <span class = "field-hint">0 = disabled. Auto-push when queue reaches this size.</span>
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "commit_prefix">Commit Message Prefix</label>
+                <input class = "input" type = "text" id = "commit_prefix" placeholder = "ext:">
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "push_format">Push Format</label>
+                <select class = "select" id = "push_format">
+                    <option value = "url_only">URL only (compact)</option>
+                    <option value = "full_object">Full object (skips re-scrape)</option>
+                </select>
+                <span class = "field-hint"><code>url_only</code>: pushes URLs to temp_link.json, backend scrapes details.<br>
+                    <code>full_object</code>: pushes complete game data directly to game_info.json (no re-scrape).</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Cache -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <circle cx = "12" cy = "12" r = "10"/>
+                <polyline points = "12 6 12 12 16 14"/>
+            </svg>
+            Cache
+        </h2>
+        <div class = "settings-grid">
+            <div class = "field-group">
+                <label class = "label" for = "cache_ttl_minutes">Cache TTL (minutes)</label>
+                <input class = "input" type = "number" id = "cache_ttl_minutes" min = "1" max = "60" placeholder = "5">
+                <span class = "field-hint">How often game_info.json and temp_link.json are re-fetched for dedup.</span>
+            </div>
+        </div>
+        <button class = "btn btn-ghost btn-sm" id = "refreshCacheBtn" style = "margin-top:var(--space-md)">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <polyline points = "23 4 23 10 17 10"/>
+                <polyline points = "1 20 1 14 7 14"/>
+                <path d = "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Refresh Cache Now
+        </button>
+    </section>
+
+    <!-- Logging -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points = "14 2 14 8 20 8"/>
+                <line x1 = "16" y1 = "13" x2 = "8" y2 = "13"/>
+                <line x1 = "16" y1 = "17" x2 = "8" y2 = "17"/>
+            </svg>
+            Logging
+        </h2>
+        <div class = "settings-grid">
+            <div class = "field-group">
+                <label class = "label" for = "log_level">Log Level</label>
+                <select class = "select" id = "log_level">
+                    <option value = "debug">Debug</option>
+                    <option value = "info">Info</option>
+                    <option value = "warn">Warn</option>
+                    <option value = "error">Error</option>
+                </select>
+            </div>
+            <div class = "field-group">
+                <label class = "label" for = "log_max_entries">Max Log Entries</label>
+                <input
+                        class = "input" type = "number" id = "log_max_entries" min = "50" max = "5000"
+                        placeholder = "500"
+                >
+            </div>
+        </div>
+        <div class = "log-actions">
+            <button class = "btn btn-ghost btn-sm" id = "viewLogsBtn">View Logs</button>
+            <button class = "btn btn-ghost btn-sm" id = "exportLogsBtn">
+                <svg
+                        width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2" stroke-linecap = "round"
+                >
+                    <path d = "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points = "7 10 12 15 17 10"/>
+                    <line x1 = "12" y1 = "15" x2 = "12" y2 = "3"/>
+                </svg>
+                Export JSON
+            </button>
+            <button class = "btn btn-ghost btn-sm" id = "clearLogsBtn">Clear Logs</button>
+        </div>
+        <div class = "log-viewer" id = "logViewer" style = "display:none">
+            <div class = "log-viewer-header">
+                <div class = "flex items-center gap-sm">
+                    <select
+                            class = "select" id = "logFilterLevel"
+                            style = "width:auto; padding:2px 28px 2px 8px; font-size:11px"
+                    >
+                        <option value = "">All Levels</option>
+                        <option value = "debug">Debug</option>
+                        <option value = "info">Info</option>
+                        <option value = "warn">Warn</option>
+                        <option value = "error">Error</option>
+                    </select>
+                    <select
+                            class = "select" id = "logFilterCategory"
+                            style = "width:auto; padding:2px 28px 2px 8px; font-size:11px"
+                    >
+                        <option value = "">All Categories</option>
+                        <option value = "push">Push</option>
+                        <option value = "queue">Queue</option>
+                        <option value = "dedup">Dedup</option>
+                        <option value = "gpg">GPG</option>
+                        <option value = "settings">Settings</option>
+                        <option value = "github">GitHub</option>
+                        <option value = "detector">Detector</option>
+                    </select>
+                </div>
+                <span class = "text-xs text-muted" id = "logCount"></span>
+            </div>
+            <div class = "log-entries" id = "logEntries"></div>
+        </div>
+    </section>
+
+    <!-- Danger Zone -->
+    <section class = "settings-section danger-zone">
+        <h2 class = "section-heading danger-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1 = "12" y1 = "9" x2 = "12" y2 = "13"/>
+                <line x1 = "12" y1 = "17" x2 = "12.01" y2 = "17"/>
+            </svg>
+            Danger Zone
+        </h2>
+        <p class = "text-sm text-muted" style = "margin-bottom:var(--space-md)">
+            These actions are destructive and cannot be undone.
+        </p>
+        <button class = "btn btn-danger btn-sm" id = "resetBtn">Reset Extension</button>
+        <button class = "btn btn-danger btn-sm" id = "resetConfirmBtn" style = "display:none">
+            &#9888; Click again within 5s to confirm
+        </button>
+    </section>
+
+    <footer class = "ext-footer">
+        Copyright &copy; 2026 poli0981 &amp; contributor(s)<br>
+        Third-party: <a href = "https://github.com/openpgpjs/openpgpjs" target = "_blank" rel = "noopener">openpgp.js
+                                                                                                           (LGPL-3.0)</a>
+    </footer>
+</div>
+
+<script type = "module" src = "settings.js"></script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang = "en">
+<head>
+    <meta charset = "UTF-8">
+    <meta name = "viewport" content = "width=360">
+    <link rel = "stylesheet" href = "../shared/theme.css">
+    <link rel = "stylesheet" href = "popup.css">
+</head>
+<body>
+<!-- ── Header ── -->
+<header class = "popup-header">
+    <div class = "flex items-center gap-sm">
+        <svg
+                class = "logo-icon" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                stroke-width = "2" stroke-linecap = "round" stroke-linejoin = "round"
+        >
+            <path d = "M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points = "7.5 4.21 12 6.81 16.5 4.21"/>
+            <polyline points = "7.5 19.79 7.5 14.6 3 12"/>
+            <polyline points = "21 12 16.5 14.6 16.5 19.79"/>
+            <polyline points = "3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1 = "12" y1 = "22.08" x2 = "12" y2 = "12"/>
+        </svg>
+        <div>
+            <h1 class = "popup-title">itch.io F2P Tracker</h1>
+            <span class = "popup-version" id = "version"></span>
+        </div>
+    </div>
+    <div class = "flex items-center gap-sm">
+        <span class = "status-dot" id = "statusDot" title = "GitHub connection status"></span>
+    </div>
+</header>
+
+<!-- ── Detected Game Card ── -->
+<section class = "popup-section" id = "detectedSection">
+    <div class = "section-label">Current Page</div>
+    <div class = "card detected-card" id = "detectedCard">
+        <div class = "detected-loading" id = "detectedLoading">
+            <span class = "text-muted text-sm">Checking page...</span>
+        </div>
+        <div class = "detected-content" id = "detectedContent" style = "display:none">
+            <div class = "detected-row">
+                <img class = "detected-thumb" id = "detectedThumb" src = "" alt = "">
+                <div class = "detected-info">
+                    <div class = "detected-name truncate" id = "detectedName"></div>
+                    <div class = "detected-meta text-sm text-muted">
+                        <span id = "detectedGenre"></span>
+                        <span class = "detected-sep">&middot;</span>
+                        <span id = "detectedDev"></span>
+                    </div>
+                    <div
+                            class = "detected-extra text-xs text-muted" id = "detectedExtraInfo"
+                            style = "display:none; margin-top:2px;"
+                    ></div>
+                    <div class = "detected-badges" id = "detectedBadges"></div>
+                </div>
+            </div>
+            <div
+                    class = "detected-desc text-xs text-muted" id = "detectedDesc"
+                    style = "display:none; margin-top:6px; line-height:1.4; opacity:0.8;"
+            ></div>
+            <button class = "btn btn-success w-full" id = "addBtn" style = "margin-top:8px">
+                <svg
+                        width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2.5" stroke-linecap = "round"
+                >
+                    <line x1 = "12" y1 = "5" x2 = "12" y2 = "19"/>
+                    <line x1 = "5" y1 = "12" x2 = "19" y2 = "12"/>
+                </svg>
+                Add to Queue
+            </button>
+        </div>
+        <div class = "detected-none" id = "detectedNone" style = "display:none">
+            <span class = "text-muted text-sm">Navigate to an itch.io game page to detect games.</span>
+        </div>
+        <div class = "detected-duplicate" id = "detectedDuplicate" style = "display:none">
+            <span class = "text-sm" style = "color:var(--accent-yellow)">&varr; Already in queue or tracker</span>
+        </div>
+    </div>
+</section>
+
+<!-- ── Queue Summary ── -->
+<section class = "popup-section">
+    <div class = "section-label">Queue</div>
+    <div class = "card queue-summary">
+        <div class = "flex items-center justify-between">
+            <div class = "flex items-center gap-sm">
+                <svg
+                        width = "16" height = "16" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2" stroke-linecap = "round" stroke-linejoin = "round"
+                >
+                    <rect x = "3" y = "3" width = "7" height = "7"/>
+                    <rect x = "14" y = "3" width = "7" height = "7"/>
+                    <rect x = "3" y = "14" width = "7" height = "7"/>
+                    <rect x = "14" y = "14" width = "7" height = "7"/>
+                </svg>
+                <span class = "queue-count">
+                    <strong id = "queueCount">0</strong>
+                    <span class = "text-muted">/ 150</span>
+                </span>
+            </div>
+            <button class = "btn btn-primary btn-sm" id = "pushBtn" disabled>
+                <svg
+                        width = "12" height = "12" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2.5" stroke-linecap = "round"
+                >
+                    <line x1 = "12" y1 = "19" x2 = "12" y2 = "5"/>
+                    <polyline points = "5 12 12 5 19 12"/>
+                </svg>
+                Push
+            </button>
+        </div>
+        <div class = "queue-bar">
+            <div class = "queue-bar-fill" id = "queueBar"></div>
+        </div>
+    </div>
+</section>
+
+<!-- ── Quick Actions ── -->
+<section class = "popup-section">
+    <div class = "popup-actions">
+        <button class = "btn btn-ghost btn-sm" id = "openQueueBtn">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points = "14 2 14 8 20 8"/>
+                <line x1 = "16" y1 = "13" x2 = "8" y2 = "13"/>
+                <line x1 = "16" y1 = "17" x2 = "8" y2 = "17"/>
+            </svg>
+            Queue
+        </button>
+        <button class = "btn btn-ghost btn-sm" id = "openSettingsBtn">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <circle cx = "12" cy = "12" r = "3"/>
+                <path d = "M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+            </svg>
+            Settings
+        </button>
+    </div>
+</section>
+
+<!-- ── Recent Activity ── -->
+<section class = "popup-section popup-section-last">
+    <div class = "section-label">Recent Activity</div>
+    <div class = "activity-list" id = "activityList">
+        <div class = "empty-state" style = "padding:12px">
+            <span class = "text-muted text-xs">No recent activity</span>
+        </div>
+    </div>
+</section>
+
+<footer class = "ext-footer">
+    Copyright &copy; 2026 poli0981 &amp; contributor(s)<br>
+    Third-party: <a href = "https://github.com/openpgpjs/openpgpjs" target = "_blank" rel = "noopener">openpgp.js
+                                                                                                       (LGPL-3.0)</a>
+</footer>
+
+<script type = "module" src = "popup.js"></script>
+</body>
+</html>

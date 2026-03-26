@@ -1,0 +1,128 @@
+name : "\U0001F41B Bug Report"
+description : Report a bug or unexpected behavior in the extension.
+title : "[Bug] "
+labels : [ "bug", "triage" ]
+assignees : [ ]
+
+body :
+  -
+    type : markdown
+    attributes :
+      value : |
+        **Before submitting, please check:**
+        - [ ] I have searched existing issues and this is not a duplicate.
+        - [ ] I have read the [Contributing guidelines](../../CONTRIBUTING.md).
+
+  -
+    type : textarea
+    id : description
+    attributes :
+      label : Description
+      description : What happened? Be specific and direct.
+      placeholder : "When I click 'Push All' with 5 games in queue, the extension shows 'Push failed' with no error details."
+    validations :
+      required : true
+
+  -
+    type : textarea
+    id : expected
+    attributes :
+      label : Expected Behavior
+      description : What should have happened instead?
+      placeholder : "The 5 games should be pushed to the repository and the queue should be cleared."
+    validations :
+      required : true
+
+  -
+    type : textarea
+    id : reason
+    attributes :
+      label : Why This Matters
+      description : How does this bug affect your workflow?
+      placeholder : "Cannot push any games to the tracker — the extension is unusable."
+    validations :
+      required : true
+
+  -
+    type : textarea
+    id : steps
+    attributes :
+      label : Steps to Reproduce
+      description : Numbered steps to trigger the bug.
+      placeholder : |
+        1. Open Settings, configure GitHub token and repo
+        2. Visit a free game page on itch.io
+        3. Click 'Add to Queue' in popup
+        4. Repeat for 5 games
+        5. Click 'Push All' in popup
+        6. Error appears with no details
+    validations :
+      required : true
+
+  -
+    type : input
+    id : itch-url
+    attributes :
+      label : itch.io Game Page URL (if applicable)
+      description : The specific itch.io page where the issue occurs.
+      placeholder : "https://creator.itch.io/game-name"
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : screenshots
+    attributes :
+      label : Screenshots / Error Logs
+      description : |
+        Attach screenshots or paste error logs.
+        Extension logs can be exported from Settings → Export Logs (JSON).
+      placeholder : "Paste error messages, console output, or attach screenshots here."
+    validations :
+      required : false
+
+  -
+    type : input
+    id : ext-version
+    attributes :
+      label : Extension Version
+      description : Found in the popup header or manifest.json.
+      placeholder : "1.0.0"
+    validations :
+      required : false
+
+  -
+    type : input
+    id : browser
+    attributes :
+      label : Browser & Version
+      placeholder : "Chrome 124.0.6367.91"
+    validations :
+      required : false
+
+  -
+    type : input
+    id : os
+    attributes :
+      label : Operating System
+      placeholder : "Windows 11 / macOS 14.4 / Ubuntu 24.04"
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : pseudocode
+    attributes :
+      label : Suggested Fix / Pseudocode (optional)
+      description : If you have an idea for how to fix this, share it here.
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : additional
+    attributes :
+      label : Additional Context
+      description : Any other relevant information.
+    validations :
+      required : false

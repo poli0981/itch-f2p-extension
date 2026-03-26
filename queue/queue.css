@@ -1,0 +1,162 @@
+/* SPDX-License-Identifier: GPL-3.0-only
+ * Copyright (c) 2026 poli0981 & contributor(s)
+ */
+
+body { background : var(--bg-tertiary); }
+
+.page-container { max-width : 960px; margin : 0 auto; padding : var(--space-xl); }
+
+/* ── Header ── */
+.page-header {
+    display       : flex; align-items : center; justify-content : space-between;
+    margin-bottom : var(--space-xl); padding-bottom : var(--space-lg);
+    border-bottom : 1px solid var(--border);
+}
+
+.header-icon { color : var(--accent); }
+
+.page-title { font-size : var(--font-xl); font-weight : 700; color : var(--text-heading); }
+
+.page-subtitle { font-size : var(--font-sm); color : var(--text-secondary); margin-top : 2px; }
+
+/* ── Search ── */
+.search-bar {
+    display       : flex; align-items : center; gap : var(--space-sm);
+    background    : var(--bg-input); border : 1px solid var(--border);
+    border-radius : var(--radius); padding : 0 var(--space-md);
+    margin-bottom : var(--space-lg); transition : border-color var(--transition-fast);
+}
+
+.search-bar:focus-within { border-color : var(--border-focus); }
+
+.search-bar svg { color : var(--text-muted); flex-shrink : 0; }
+
+.search-input { border : none; background : none; padding : var(--space-sm) 0; }
+
+.search-input:focus { border-color : transparent; }
+
+/* ── Queue Grid ── */
+.queue-grid { display : grid; grid-template-columns : repeat(auto-fill, minmax(320px, 1fr)); gap : var(--space-lg); }
+
+/* ── Game Card ── */
+.game-card {
+    background    : var(--bg-card); border : 1px solid var(--border-subtle);
+    border-radius : var(--radius); overflow : hidden;
+    transition    : all var(--transition);
+}
+
+.game-card:hover { border-color : var(--border); box-shadow : var(--shadow-sm); }
+
+.game-card-header { position : relative; }
+
+.game-card-thumb {
+    width   : 100%; height : 130px; object-fit : cover;
+    display : block; background : var(--bg-secondary);
+}
+
+.game-card-remove {
+    position   : absolute; top : var(--space-xs); right : var(--space-xs);
+    width      : 24px; height : 24px; background : rgba(0, 0, 0, 0.6);
+    border     : none; border-radius : var(--radius-sm);
+    color      : var(--text-secondary); cursor : pointer;
+    display    : flex; align-items : center; justify-content : center;
+    transition : all var(--transition-fast); opacity : 0;
+}
+
+.game-card:hover .game-card-remove { opacity : 1; }
+
+.game-card-remove:hover { background : var(--accent-red); color : #fff; }
+
+/* NSFW overlay badge on thumbnail */
+.game-card-nsfw-badge {
+    position      : absolute; top : var(--space-xs); left : var(--space-xs);
+    background    : rgba(231, 76, 60, 0.85); color : #fff;
+    font-size     : 10px; font-weight : 700; padding : 1px 6px;
+    border-radius : 3px; letter-spacing : 0.5px;
+}
+
+.game-card-body { padding : var(--space-md); }
+
+.game-card-name {
+    font-size : var(--font-base); font-weight : 600;
+    color     : var(--text-heading); margin-bottom : var(--space-xs); line-height : 1.3;
+}
+
+.game-card-meta {
+    font-size : var(--font-xs); color : var(--text-secondary);
+    display   : flex; flex-wrap : wrap; gap : var(--space-xs);
+}
+
+.game-card-meta span { background : var(--bg-secondary); padding : 1px 6px; border-radius : 3px; }
+
+/* ── Toggle buttons ── */
+.game-card-toggle {
+    width      : 100%; padding : var(--space-xs) var(--space-md);
+    background : none; border : none; border-top : 1px solid var(--border-subtle);
+    color      : var(--text-muted); font-size : var(--font-xs);
+    cursor     : pointer; transition : color var(--transition-fast); text-align : center;
+}
+
+.game-card-toggle:hover { color : var(--accent); }
+
+.auto-toggle { font-style : italic; }
+
+.edit-toggle { color : var(--accent); opacity : 0.7; }
+
+.edit-toggle:hover { opacity : 1; }
+
+/* ── Auto panel ── */
+.game-card-auto {
+    display    : none; padding : var(--space-sm) var(--space-md) var(--space-md);
+    background : rgba(0, 0, 0, 0.15); border-top : 1px solid var(--border-subtle);
+}
+
+.game-card-auto.open { display : block; }
+
+.auto-row { display : flex; gap : var(--space-sm); margin-bottom : var(--space-sm); line-height : 1.4; }
+
+.auto-row:last-child { margin-bottom : 0; }
+
+.auto-label {
+    font-size      : var(--font-xs); color : var(--text-muted);
+    min-width      : 80px; flex-shrink : 0; font-weight : 500;
+    text-transform : uppercase; letter-spacing : 0.3px; padding-top : 1px;
+}
+
+.auto-value { font-size : var(--font-xs); color : var(--text-secondary); word-break : break-word; }
+
+.auto-tags { display : flex; flex-wrap : wrap; gap : 3px; flex : 1; }
+
+.tag-chip {
+    display       : inline-block; font-size : 10px; padding : 1px 6px;
+    border-radius : 3px; background : var(--bg-secondary);
+    color         : var(--text-secondary); white-space : nowrap;
+}
+
+/* ── Edit panel ── */
+.game-card-fields {
+    padding    : 0 var(--space-md) var(--space-md); display : none;
+    border-top : 1px solid var(--border-subtle);
+}
+
+.game-card-fields.open { display : block; padding-top : var(--space-sm); }
+
+.field-row { display : flex; align-items : center; gap : var(--space-sm); margin-bottom : var(--space-sm); }
+
+.field-row:last-child { margin-bottom : 0; }
+
+.field-label { font-size : var(--font-xs); color : var(--text-muted); width : 70px; flex-shrink : 0; font-weight : 500; }
+
+.field-input { flex : 1; }
+
+.field-input .input, .field-input .select { padding : var(--space-xs) var(--space-sm); font-size : var(--font-xs); }
+
+.genre-field { flex-wrap : wrap; }
+
+.genre-select-wrap { display : flex; flex-direction : column; gap : var(--space-xs); }
+
+.genre-select { font-size : var(--font-xs) !important; }
+
+.genre-custom-input { font-size : var(--font-xs) !important; padding : var(--space-xs) var(--space-sm) !important; border : 1px dashed var(--accent) !important; }
+
+.optgroup-label { font-weight : 600; color : var(--text-muted); font-size : 10px; }

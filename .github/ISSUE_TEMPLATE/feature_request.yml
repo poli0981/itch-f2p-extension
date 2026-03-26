@@ -1,0 +1,98 @@
+name : "\u2728 Feature Request"
+description : Suggest a new feature or improvement for the extension.
+title : "[Feature] "
+labels : [ "enhancement", "triage" ]
+assignees : [ ]
+
+body :
+  -
+    type : markdown
+    attributes :
+      value : |
+        **Before submitting, please check:**
+        - [ ] I have searched existing issues and this feature has not been requested.
+        - [ ] I have read the [Contributing guidelines](../../CONTRIBUTING.md).
+
+  -
+    type : textarea
+    id : description
+    attributes :
+      label : Description
+      description : What feature do you want? Be specific and direct.
+      placeholder : "Add a button in the queue page to push only selected games instead of the entire queue."
+    validations :
+      required : true
+
+  -
+    type : textarea
+    id : reason
+    attributes :
+      label : Why This Feature Is Needed
+      description : What problem does this solve? What use case does it address?
+      placeholder : "Sometimes I want to push only a few games while keeping others for review."
+    validations :
+      required : true
+
+  -
+    type : dropdown
+    id : category
+    attributes :
+      label : Category
+      description : What area of the extension does this affect?
+      options :
+        - Detection (content script / itch.io page parsing)
+        - Queue management
+        - Push / GitHub integration
+        - Push format (url_only / full_object)
+        - GPG signing
+        - Settings / Configuration
+        - UI / UX
+        - NSFW detection
+        - Logging / Debugging
+        - Documentation
+        - Other
+    validations :
+      required : true
+
+  -
+    type : textarea
+    id : proposed
+    attributes :
+      label : Proposed Solution
+      description : How do you think this should work?
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : pseudocode
+    attributes :
+      label : Pseudocode / Technical Notes (optional)
+      description : If you have implementation ideas, share them here.
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : alternatives
+    attributes :
+      label : Alternatives Considered
+      description : Have you considered other approaches?
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : screenshots
+    attributes :
+      label : Mockups / Screenshots (optional)
+    validations :
+      required : false
+
+  -
+    type : textarea
+    id : additional
+    attributes :
+      label : Additional Context
+    validations :
+      required : false
