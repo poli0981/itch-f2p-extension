@@ -11,7 +11,7 @@
  *   - itch.io uses normalized URL: https://{creator}.itch.io/{slug}
  */
 
-import {ITCH_URL_EXTRACT_RE} from "./constants.js";
+import { ITCH_URL_EXTRACT_RE } from "./constants.js";
 
 /**
  * Normalize an itch.io game URL to canonical form.
@@ -22,29 +22,28 @@ import {ITCH_URL_EXTRACT_RE} from "./constants.js";
  * @param {string} url
  * @returns {string|null} Canonical URL or null
  */
-export function normalizeUrl (url) {
+export function normalizeUrl(url) {
     if (!url) return null;
 
     try {
-        const parsed = new URL (url.trim ());
+        const parsed = new URL(url.trim());
         // Must be *.itch.io
-        if (!parsed.hostname.endsWith (".itch.io")) return null;
+        if (!parsed.hostname.endsWith(".itch.io")) return null;
 
         // Extract creator.itch.io/slug
-        const match = parsed.href.match (ITCH_URL_EXTRACT_RE);
+        const match = parsed.href.match(ITCH_URL_EXTRACT_RE);
         if (!match) return null;
 
-        const creator = match[1].toLowerCase ();
-        const slug = match[2].toLowerCase ();
+        const creator = match[1].toLowerCase();
+        const slug = match[2].toLowerCase();
 
         return `https://${creator}.itch.io/${slug}`;
-    }
-    catch {
+    } catch {
         // Try regex-only extraction for malformed URLs
-        const match = url.match (ITCH_URL_EXTRACT_RE);
+        const match = url.match(ITCH_URL_EXTRACT_RE);
         if (!match) return null;
 
-        return `https://${match[1].toLowerCase ()}.itch.io/${match[2].toLowerCase ()}`;
+        return `https://${match[1].toLowerCase()}.itch.io/${match[2].toLowerCase()}`;
     }
 }
 
@@ -55,8 +54,8 @@ export function normalizeUrl (url) {
  * @param {string} url
  * @returns {string|null}
  */
-export function extractGameId (url) {
-    return normalizeUrl (url);
+export function extractGameId(url) {
+    return normalizeUrl(url);
 }
 
 /**
@@ -64,9 +63,9 @@ export function extractGameId (url) {
  * @param {string} url
  * @returns {string|null}
  */
-export function extractCreator (url) {
+export function extractCreator(url) {
     if (!url) return null;
-    const match = url.match (ITCH_URL_EXTRACT_RE);
+    const match = url.match(ITCH_URL_EXTRACT_RE);
     return match ? match[1] : null;
 }
 
@@ -75,9 +74,9 @@ export function extractCreator (url) {
  * @param {string} url
  * @returns {string|null}
  */
-export function extractSlug (url) {
+export function extractSlug(url) {
     if (!url) return null;
-    const match = url.match (ITCH_URL_EXTRACT_RE);
+    const match = url.match(ITCH_URL_EXTRACT_RE);
     return match ? match[2] : null;
 }
 
@@ -85,9 +84,8 @@ export function extractSlug (url) {
  * Get current UTC timestamp in ISO format.
  * @returns {string}
  */
-export function nowISO () {
-    return new Date ().toISOString ()
-                      .replace (/\.\d{3}Z$/, "Z");
+export function nowISO() {
+    return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 
 /**
@@ -95,15 +93,13 @@ export function nowISO () {
  * @param {string} iso
  * @returns {string}
  */
-export function formatTime (iso) {
+export function formatTime(iso) {
     if (!iso) return "\u2014";
     try {
-        const d = new Date (iso);
-        const pad = (n) => String (n)
-            .padStart (2, "0");
-        return `${d.getFullYear ()}-${pad (d.getMonth () + 1)}-${pad (d.getDate ())} ${pad (d.getHours ())}:${pad (d.getMinutes ())}`;
-    }
-    catch {
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, "0");
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch {
         return iso;
     }
 }
@@ -114,9 +110,9 @@ export function formatTime (iso) {
  * @param {number} max
  * @returns {string}
  */
-export function truncate (str, max = 50) {
+export function truncate(str, max = 50) {
     if (!str || str.length <= max) return str || "";
-    return str.slice (0, max - 3) + "...";
+    return str.slice(0, max - 3) + "...";
 }
 
 /**
@@ -124,9 +120,9 @@ export function truncate (str, max = 50) {
  * @param {string} str
  * @returns {string}
  */
-export function sanitize (str) {
+export function sanitize(str) {
     if (!str) return "";
-    const div = document.createElement ("div");
+    const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
 }
@@ -137,49 +133,55 @@ export function sanitize (str) {
  * @param {number} ms
  * @returns {Function}
  */
-export function debounce (fn, ms = 300) {
+export function debounce(fn, ms = 300) {
     let timer;
     return (...args) => {
-        clearTimeout (timer);
-        timer = setTimeout (() => fn (...args), ms);
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
     };
 }
 
 /**
  * Create a game entry skeleton from detected data.
  *
+ * Multi-value fields (tags, platforms, languages, inputs, made_with)
+ * are stored as arrays. Single-value fields remain strings.
+ *
  * @param {object} detected - Data from content script
  * @returns {object}
  */
-export function makeQueueEntry (detected) {
+export function makeQueueEntry(detected) {
     return {
         // ── Identity ──
-        url: normalizeUrl (detected.url || ""),
+        url: normalizeUrl(detected.url || ""),
         name: detected.name || "",
         thumbnail: detected.thumbnail || "",
 
         // ── Auto-detected fields (read-only) ──
+        // Single-value (strings)
         dev: detected.dev || "",
         description: detected.description || "",
         genre: detected.genre || "",
-        tags: detected.tags || "",
         status: detected.status || "",
-        platforms: detected.platforms || "",
         publisher: detected.publisher || "",
         release_date: detected.release_date || "",
-        made_with: detected.made_with || "",
         rating: detected.rating || "",
         rating_count: detected.rating_count || "",
         average_session: detected.average_session || "",
-        languages: detected.languages || "",
-        inputs: detected.inputs || "",
         nsfw: detected.nsfw || "No",
+
+        // Multi-value (arrays)
+        tags: Array.isArray(detected.tags) ? detected.tags : [],
+        platforms: Array.isArray(detected.platforms) ? detected.platforms : [],
+        languages: Array.isArray(detected.languages) ? detected.languages : [],
+        inputs: Array.isArray(detected.inputs) ? detected.inputs : [],
+        made_with: Array.isArray(detected.made_with) ? detected.made_with : [],
 
         // ── User-editable fields ──
         safe_virus: "?",
         notes: "",
 
         // ── Metadata ──
-        added_at: nowISO (),
+        added_at: nowISO(),
     };
 }

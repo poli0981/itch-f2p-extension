@@ -45,34 +45,45 @@ import {buildCommitPayload, getKeyMeta, isSigningAvailable, signCommitPayload} f
 /**
  * Convert a queue entry to a full game_info.json-compatible object.
  * Mirrors the shape produced by scraper.py scrape_game_info().
- * Fields with N/A or empty values are preserved (matches scraper output).
+ *
+ * ALL fields are always included for consistent data processing:
+ *   - Single-value fields: fallback to "N/A" if missing
+ *   - Multi-value fields:  fallback to [] if missing
+ *   - User-editable fields: always included with current value
  *
  * @param {object} entry - Queue entry
  * @returns {object} Object matching game_info.json schema
  */
 function toFullObject (entry) {
-    const obj = {};
-    if (entry.url) obj.url = entry.url;
-    if (entry.name) obj.name = entry.name;
-    if (entry.dev) obj.dev = entry.dev;
-    if (entry.description) obj.description = entry.description;
-    if (entry.genre) obj.genre = entry.genre;
-    if (entry.tags) obj.tags = entry.tags;
-    if (entry.status) obj.status = entry.status;
-    if (entry.platforms) obj.platforms = entry.platforms;
-    if (entry.publisher) obj.publisher = entry.publisher;
-    if (entry.release_date) obj.release_date = entry.release_date;
-    if (entry.made_with) obj.made_with = entry.made_with;
-    if (entry.rating) obj.rating = entry.rating;
-    if (entry.rating_count) obj.rating_count = entry.rating_count;
-    if (entry.average_session) obj.average_session = entry.average_session;
-    if (entry.languages) obj.languages = entry.languages;
-    if (entry.inputs) obj.inputs = entry.inputs;
-    if (entry.nsfw) obj.nsfw = entry.nsfw;
-    if (entry.thumbnail) obj.thumbnail = entry.thumbnail;
-    if (entry.safe_virus && entry.safe_virus !== "?") obj.safe_virus = entry.safe_virus;
-    if (entry.notes && entry.notes.trim ()) obj.notes = entry.notes.trim ();
-    return obj;
+    return {
+        // Single-value fields (strings — "N/A" if missing)
+        url: entry.url || "N/A",
+        name: entry.name || "N/A",
+        dev: entry.dev || "N/A",
+        description: entry.description || "N/A",
+        genre: entry.genre || "N/A",
+        status: entry.status || "N/A",
+        publisher: entry.publisher || "N/A",
+        release_date: entry.release_date || "N/A",
+        rating: entry.rating || "N/A",
+        rating_count: entry.rating_count || "N/A",
+        average_session: entry.average_session || "N/A",
+        nsfw: entry.nsfw || "No",
+        thumbnail: entry.thumbnail || "N/A",
+
+        // Multi-value fields (arrays — [] if missing)
+        tags: Array.isArray (entry.tags) ? entry.tags : [],
+        platforms: Array.isArray (entry.platforms) ? entry.platforms : [],
+        languages: Array.isArray (entry.languages) ? entry.languages : [],
+        inputs: Array.isArray (entry.inputs) ? entry.inputs : [],
+        made_with: Array.isArray (entry.made_with) ? entry.made_with : [],
+
+        // User-editable fields — always included
+        safe_virus: entry.safe_virus || "?",
+        notes: (
+            entry.notes || ""
+        ).trim (),
+    };
 }
 
 /**

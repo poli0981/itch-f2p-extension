@@ -35,28 +35,29 @@ export const LOG_MAX_DEFAULT = 500;
 
 // ── Auto-detected fields (read-only in queue UI) ──
 export const AUTO_FIELDS = {
-    description: {label: "Description", type: "text"},
-    release_date: {label: "Release Date", type: "text"},
-    dev: {label: "Developer", type: "text"},
-    publisher: {label: "Publisher", type: "text"},
-    platforms: {label: "Platforms", type: "text"},
-    languages: {label: "Languages", type: "text"},
-    tags: {label: "Tags", type: "text"},
-    status: {label: "Status", type: "text"},
-    made_with: {label: "Made With", type: "text"},
-    rating: {label: "Rating", type: "text"},
-    rating_count: {label: "Rating Count", type: "text"},
-    average_session: {label: "Avg Session", type: "text"},
-    inputs: {label: "Inputs", type: "text"},
-    thumbnail: {label: "Thumbnail", type: "text"},
-    nsfw: {label: "NSFW", type: "text"},
+    description:     { label: "Description",     type: "text" },
+    release_date:    { label: "Release Date",    type: "text" },
+    dev:             { label: "Developer",       type: "text" },
+    publisher:       { label: "Publisher",        type: "text" },
+    status:          { label: "Status",          type: "text" },
+    rating:          { label: "Rating",          type: "text" },
+    rating_count:    { label: "Rating Count",    type: "text" },
+    average_session: { label: "Avg Session",     type: "text" },
+    nsfw:            { label: "NSFW",            type: "text" },
+    // Multi-value (arrays)
+    tags:            { label: "Tags",            type: "list" },
+    platforms:       { label: "Platforms",        type: "list" },
+    languages:       { label: "Languages",       type: "list" },
+    inputs:          { label: "Inputs",          type: "list" },
+    made_with:       { label: "Made With",       type: "list" },
+    thumbnail:       { label: "Thumbnail",       type: "text" },
 };
 
 // ── Editable fields (user can modify in queue UI) ──
 export const EDITABLE_FIELDS = {
-    genre: {label: "Genre", type: "tag-select", placeholder: "Select or type genre...", default: ""},
-    safe_virus: {label: "Safe", type: "select", options: ["?", "yes", "no"], default: "?"},
-    notes: {label: "Notes", type: "text", placeholder: "Any notes...", default: ""},
+    genre:      { label: "Genre",  type: "tag-select", placeholder: "Select or type genre...", default: "" },
+    safe_virus: { label: "Safe",   type: "select", options: ["?", "yes", "no"], default: "?" },
+    notes:      { label: "Notes",  type: "text",   placeholder: "Any notes...", default: "" },
 };
 
 // ── Genre preset list (common itch.io genres) ──
@@ -72,12 +73,12 @@ export const GENRE_PRESETS = [
 
 // ── Storage keys ──
 export const STORAGE_KEYS = {
-    SETTINGS: "settings",
-    QUEUE: "queue",
-    LOGS: "logs",
-    CACHE_URLS: "cache:urls",
-    GPG_KEY_ENC: "gpg:key_encrypted",
-    GPG_KEY_META: "gpg:key_meta",
+    SETTINGS:       "settings",
+    QUEUE:          "queue",
+    LOGS:           "logs",
+    CACHE_URLS:     "cache:urls",
+    GPG_KEY_ENC:    "gpg:key_encrypted",
+    GPG_KEY_META:   "gpg:key_meta",
 };
 
 // ── Default settings ──
@@ -110,24 +111,24 @@ export const DEFAULT_SETTINGS = {
 
 // ── Message types ──
 export const MSG = {
-    GAME_DETECTED: "GAME_DETECTED",
-    GET_QUEUE: "GET_QUEUE",
-    ADD_TO_QUEUE: "ADD_TO_QUEUE",
-    REMOVE_FROM_QUEUE: "REMOVE_FROM_QUEUE",
-    UPDATE_ENTRY: "UPDATE_ENTRY",
-    PUSH_QUEUE: "PUSH_QUEUE",
-    GET_SETTINGS: "GET_SETTINGS",
-    SAVE_SETTINGS: "SAVE_SETTINGS",
-    CHECK_DUPLICATE: "CHECK_DUPLICATE",
-    GET_QUEUE_SIZE: "GET_QUEUE_SIZE",
-    GET_LOGS: "GET_LOGS",
-    EXPORT_LOGS: "EXPORT_LOGS",
-    CLEAR_LOGS: "CLEAR_LOGS",
-    RESET_EXTENSION: "RESET_EXTENSION",
-    REFRESH_CACHE: "REFRESH_CACHE",
-    GPG_IMPORT_KEY: "GPG_IMPORT_KEY",
-    GPG_VALIDATE_KEY: "GPG_VALIDATE_KEY",
-    GPG_GET_KEY_META: "GPG_GET_KEY_META",
-    GPG_REMOVE_KEY: "GPG_REMOVE_KEY",
+    GAME_DETECTED:       "GAME_DETECTED",
+    GET_QUEUE:           "GET_QUEUE",
+    ADD_TO_QUEUE:        "ADD_TO_QUEUE",
+    REMOVE_FROM_QUEUE:   "REMOVE_FROM_QUEUE",
+    UPDATE_ENTRY:        "UPDATE_ENTRY",
+    PUSH_QUEUE:          "PUSH_QUEUE",
+    GET_SETTINGS:        "GET_SETTINGS",
+    SAVE_SETTINGS:       "SAVE_SETTINGS",
+    CHECK_DUPLICATE:     "CHECK_DUPLICATE",
+    GET_QUEUE_SIZE:      "GET_QUEUE_SIZE",
+    GET_LOGS:            "GET_LOGS",
+    EXPORT_LOGS:         "EXPORT_LOGS",
+    CLEAR_LOGS:          "CLEAR_LOGS",
+    RESET_EXTENSION:     "RESET_EXTENSION",
+    REFRESH_CACHE:       "REFRESH_CACHE",
+    GPG_IMPORT_KEY:      "GPG_IMPORT_KEY",
+    GPG_VALIDATE_KEY:    "GPG_VALIDATE_KEY",
+    GPG_GET_KEY_META:    "GPG_GET_KEY_META",
+    GPG_REMOVE_KEY:      "GPG_REMOVE_KEY",
     PUSH_QUEUE_UNSIGNED: "PUSH_QUEUE_UNSIGNED",
 };

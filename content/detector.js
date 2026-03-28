@@ -13,359 +13,388 @@
  *   4. Info table parse  → div.info_panel_wrapper > table (all fields)
  *   5. Description      → div.formatted_description (first sentence)
  *   6. Thumbnail        → meta[og:image] / screenshot_list img
- *   7. NSFW             → Keyword scan + content warning div
+ *   7. NSFW             → Multilingual keyword scan + content warning div
+ *
+ * Multi-value fields (tags, platforms, languages, inputs, made_with)
+ * are returned as arrays. Single-value fields remain strings.
  *
  * MV3: Plain content script (not a module). IIFE pattern.
+ * Cannot import ES modules — NSFW keywords are inlined.
  */
 
-(
-    function () {
-        "use strict";
+(function () {
+    "use strict";
 
-        const url = window.location.href;
+    const url = window.location.href;
 
-        // ════════════════════════════════════════════════════════════
-        // 0. Page validation — is this a game page?
-        // ════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════════════════════════
+    // 0. Page validation — is this a game page?
+    // ════════════════════════════════════════════════════════════
 
-        /**
-         * itch.io game pages have:
-         *   - URL: https://{creator}.itch.io/{slug}
-         *   - h1.game_title or h1[itemprop="name"]
-         *   - div.game_info_panel_widget (the right-side info panel)
-         *
-         * Skip: jams, profiles, devlogs, browse pages, collections
-         */
-        function isGamePage () {
-            // URL pattern check
-            const urlMatch = url.match (
-                /^https:\/\/([a-z0-9-]+)\.itch\.io\/([a-z0-9-]+)\/?(\?.*)?$/i
-            );
-            if (!urlMatch) return false;
+    function isGamePage() {
+        const urlMatch = url.match(
+            /^https:\/\/([a-z0-9-]+)\.itch\.io\/([a-z0-9-]+)\/?(\?.*)?$/i
+        );
+        if (!urlMatch) return false;
 
-            // Skip known non-game subdomains
-            const creator = urlMatch[1].toLowerCase ();
-            const skipSubdomains = ["itch", "leafo", "static", "img", "hwcdn"];
-            if (skipSubdomains.includes (creator)) return false;
+        const creator = urlMatch[1].toLowerCase();
+        const skipSubdomains = ["itch", "leafo", "static", "img", "hwcdn"];
+        if (skipSubdomains.includes(creator)) return false;
 
-            // Skip non-game paths
-            const slug = urlMatch[2].toLowerCase ();
-            const skipSlugs = [
-                "jams", "profile", "my-collections", "dashboard",
-                "games", "tools", "game-assets", "comics", "books",
-                "physical-games", "soundtracks", "misc"
-            ];
-            if (skipSlugs.includes (slug)) return false;
+        const slug = urlMatch[2].toLowerCase();
+        const skipSlugs = ["jams", "profile", "my-collections", "dashboard",
+                           "games", "tools", "game-assets", "comics", "books",
+                           "physical-games", "soundtracks", "misc"];
+        if (skipSlugs.includes(slug)) return false;
 
-            // Positive signals: game page DOM elements
-            const hasTitle = !!document.querySelector ("h1.game_title, h1[itemprop='name']");
-            const hasInfoPanel = !!document.querySelector (".game_info_panel_widget, .info_panel_wrapper");
+        const hasTitle = !!document.querySelector("h1.game_title, h1[itemprop='name']");
+        const hasInfoPanel = !!document.querySelector(".game_info_panel_widget, .info_panel_wrapper");
 
-            return hasTitle || hasInfoPanel;
+        return hasTitle || hasInfoPanel;
+    }
+
+    if (!isGamePage()) return;
+
+    // ════════════════════════════════════════════════════════════
+    // DOM helpers
+    // ════════════════════════════════════════════════════════════
+
+    function textOf(sel) {
+        const el = document.querySelector(sel);
+        return el ? el.textContent.trim() : "";
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 1. Title extraction
+    // ════════════════════════════════════════════════════════════
+
+    function extractTitle() {
+        const titleEl =
+            document.querySelector("h1.game_title") ||
+            document.querySelector("h1[itemprop='name']");
+        if (titleEl) return titleEl.textContent.trim();
+
+        const og = document.querySelector("meta[property='og:title']");
+        if (og) return og.getAttribute("content") || "";
+
+        return "";
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 2. Free / Paid detection
+    // ════════════════════════════════════════════════════════════
+
+    function detectFreeStatus() {
+        const buyRow = document.querySelector("div.buy_row");
+        if (!buyRow) {
+            return { isFree: true, price: "" };
         }
 
-        if (!isGamePage ()) return;
-
-        // ════════════════════════════════════════════════════════════
-        // DOM helpers
-        // ════════════════════════════════════════════════════════════
-
-        function textOf (sel) {
-            const el = document.querySelector (sel);
-            return el ? el.textContent.trim () : "";
+        const priceTag = buyRow.querySelector(
+            'span.dollars[itemprop="price"], span.dollars'
+        );
+        if (priceTag) {
+            const priceText = priceTag.textContent.trim();
+            if (priceText && priceText !== "$0.00" && priceText !== "$0.00 USD") {
+                return { isFree: false, price: priceText };
+            }
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 1. Title extraction
-        // ════════════════════════════════════════════════════════════
-
-        function extractTitle () {
-            const titleEl =
-                document.querySelector ("h1.game_title") ||
-                document.querySelector ("h1[itemprop='name']");
-            if (titleEl) return titleEl.textContent.trim ();
-
-            // Fallback: og:title
-            const og = document.querySelector ("meta[property='og:title']");
-            if (og) return og.getAttribute ("content") || "";
-
-            return "";
+        const buyBtn = buyRow.querySelector("a.buy_btn");
+        if (buyBtn) {
+            const btnText = buyBtn.textContent.trim().toLowerCase();
+            if (btnText.includes("buy")) {
+                return { isFree: false, price: "" };
+            }
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 2. Free / Paid detection
-        // ════════════════════════════════════════════════════════════
+        return { isFree: true, price: "" };
+    }
 
-        /**
-         * Mirrors scraper.py is_free_game() logic:
-         *   - No buy_row → free (browser game / direct download)
-         *   - span.dollars[itemprop="price"] present → check value
-         *   - Button text "Buy" → paid
-         *   - "Download Now" + "Name your own price" → free
-         */
-        function detectFreeStatus () {
-            const buyRow = document.querySelector ("div.buy_row");
-            if (!buyRow) {
-                // No purchase section → free (browser game or direct link)
-                return {isFree: true, price: ""};
+    // ════════════════════════════════════════════════════════════
+    // 3. Info table parsing
+    // ════════════════════════════════════════════════════════════
+
+    /**
+     * Fields that contain multiple values (links or comma-separated).
+     * These will be returned as arrays instead of joined strings.
+     */
+    const MULTI_VALUE_FIELDS = new Set([
+        "Genre", "Tags", "Platforms", "Languages", "Inputs", "Made with",
+    ]);
+
+    /**
+     * Parse the right-side info panel.
+     *
+     * Multi-value fields → array of strings
+     * Single-value fields → string
+     *
+     * @returns {Object<string, string|string[]>}
+     */
+    function parseInfoTable() {
+        const info = {};
+        const wrapper = document.querySelector(".info_panel_wrapper");
+        if (!wrapper) return info;
+
+        const table = wrapper.querySelector("table");
+        if (!table) return info;
+
+        const rows = table.querySelectorAll("tr");
+        for (const row of rows) {
+            const cells = row.querySelectorAll("td");
+            if (cells.length < 2) continue;
+
+            const key = cells[0].textContent.trim();
+            const valueTd = cells[1];
+
+            // ── Release date: prefer abbr[title] ──
+            if (key === "Release date") {
+                const abbr = valueTd.querySelector("abbr");
+                info[key] = (abbr && abbr.getAttribute("title"))
+                    ? abbr.getAttribute("title")
+                    : (valueTd.textContent.trim() || "N/A");
+                continue;
             }
 
-            // Explicit price tag
-            const priceTag = buyRow.querySelector (
-                'span.dollars[itemprop="price"], span.dollars'
-            );
-            if (priceTag) {
-                const priceText = priceTag.textContent.trim ();
-                if (priceText && priceText !== "$0.00" && priceText !== "$0.00 USD") {
-                    return {isFree: false, price: priceText};
+            // ── Rating: itemprop attributes ──
+            if (key === "Rating") {
+                const ratingDiv = valueTd.querySelector(".aggregate_rating");
+                if (ratingDiv) {
+                    const rv = ratingDiv.querySelector("[itemprop='ratingValue']");
+                    const rc = ratingDiv.querySelector("[itemprop='ratingCount']");
+                    info["Rating"] = rv ? (rv.getAttribute("content") || "N/A") : "N/A";
+                    info["RatingCount"] = rc ? (rc.getAttribute("content") || "N/A") : "N/A";
+                } else {
+                    info["Rating"] = "N/A";
+                    info["RatingCount"] = "N/A";
                 }
+                continue;
             }
 
-            // Button text hint
-            const buyBtn = buyRow.querySelector ("a.buy_btn");
-            if (buyBtn) {
-                const btnText = buyBtn.textContent.trim ()
-                                      .toLowerCase ();
-                if (btnText.includes ("buy")) {
-                    return {isFree: false, price: ""};
-                }
-            }
-
-            return {isFree: true, price: ""};
-        }
-
-        // ════════════════════════════════════════════════════════════
-        // 3. Info table parsing
-        // ════════════════════════════════════════════════════════════
-
-        /**
-         * Parse the right-side info panel into a flat dict.
-         * Mirrors scraper.py parse_info_table().
-         *
-         * HTML structure:
-         *   <div class="info_panel_wrapper">
-         *     <table>
-         *       <tr>
-         *         <td>Genre</td>
-         *         <td><a>Platformer</a>, <a>Action</a></td>
-         *       </tr>
-         *       ...
-         *     </table>
-         *   </div>
-         */
-        function parseInfoTable () {
-            const info = {};
-            const wrapper = document.querySelector (".info_panel_wrapper");
-            if (!wrapper) return info;
-
-            const table = wrapper.querySelector ("table");
-            if (!table) return info;
-
-            const rows = table.querySelectorAll ("tr");
-            for (const row of rows) {
-                const cells = row.querySelectorAll ("td");
-                if (cells.length < 2) continue;
-
-                const key = cells[0].textContent.trim ();
-                const valueTd = cells[1];
-
-                // ── Release date: prefer abbr[title] for full datetime ──
-                if (key === "Release date") {
-                    const abbr = valueTd.querySelector ("abbr");
-                    if (abbr && abbr.getAttribute ("title")) {
-                        info[key] = abbr.getAttribute ("title");
-                    }
-                    else {
-                        info[key] = valueTd.textContent.trim () || "N/A";
-                    }
-                    continue;
-                }
-
-                // ── Rating: extract from itemprop attributes ──
-                if (key === "Rating") {
-                    const ratingDiv = valueTd.querySelector (".aggregate_rating");
-                    if (ratingDiv) {
-                        const rv = ratingDiv.querySelector ("[itemprop='ratingValue']");
-                        const rc = ratingDiv.querySelector ("[itemprop='ratingCount']");
-                        info["Rating"] = rv
-                                         ? rv.getAttribute ("content") || "N/A"
-                                         : "N/A";
-                        info["RatingCount"] = rc
-                                              ? rc.getAttribute ("content") || "N/A"
-                                              : "N/A";
-                    }
-                    else {
-                        info["Rating"] = "N/A";
-                        info["RatingCount"] = "N/A";
-                    }
-                    continue;
-                }
-
-                // ── Generic: prefer link texts, fallback to plain text ──
-                const links = valueTd.querySelectorAll ("a");
-                let value;
+            // ── Multi-value fields → arrays ──
+            if (MULTI_VALUE_FIELDS.has(key)) {
+                const links = valueTd.querySelectorAll("a");
                 if (links.length > 0) {
-                    value = [...links].map ((a) => a.textContent.trim ())
-                                      .join (", ");
+                    info[key] = [...links]
+                        .map((a) => a.textContent.trim())
+                        .filter(Boolean);
+                } else {
+                    // Comma-separated plain text fallback
+                    const raw = valueTd.textContent.trim();
+                    if (raw && raw !== "N/A") {
+                        info[key] = raw.split(",").map((s) => s.trim()).filter(Boolean);
+                    } else {
+                        info[key] = [];
+                    }
                 }
-                else {
-                    value = valueTd.textContent.trim ();
-                }
-
-                info[key] = value || "N/A";
+                continue;
             }
 
-            return info;
+            // ── Single-value fields → string ──
+            const links = valueTd.querySelectorAll("a");
+            let value;
+            if (links.length > 0) {
+                value = [...links].map((a) => a.textContent.trim()).join(", ");
+            } else {
+                value = valueTd.textContent.trim();
+            }
+
+            info[key] = value || "N/A";
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 4. Description
-        // ════════════════════════════════════════════════════════════
+        return info;
+    }
 
-        /**
-         * Extract first sentence of game description, max 200 chars.
-         * Mirrors scraper.py extract_description().
-         */
-        function extractDescription () {
-            const descEl = document.querySelector (".formatted_description");
-            if (!descEl) {
-                // Fallback: og:description
-                const og = document.querySelector ("meta[property='og:description']");
-                return og ? (
-                    og.getAttribute ("content") || ""
-                ).trim () : "N/A";
-            }
+    // ════════════════════════════════════════════════════════════
+    // 4. Description
+    // ════════════════════════════════════════════════════════════
 
-            const raw = descEl.textContent.trim ()
-                              .replace (/\s+/g, " ");
-            if (!raw) return "N/A";
-
-            if (raw.includes (".")) {
-                const first = raw.split (".")[0] + ".";
-                return first.length <= 200 ? first : first.slice (0, 197) + "...";
-            }
-
-            return raw.length > 200 ? raw.slice (0, 197) + "..." : raw;
+    function extractDescription() {
+        const descEl = document.querySelector(".formatted_description");
+        if (!descEl) {
+            const og = document.querySelector("meta[property='og:description']");
+            return og ? (og.getAttribute("content") || "").trim() : "N/A";
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 5. Thumbnail
-        // ════════════════════════════════════════════════════════════
+        const raw = descEl.textContent.trim().replace(/\s+/g, " ");
+        if (!raw) return "N/A";
 
-        function extractThumbnail () {
-            const og = document.querySelector ("meta[property='og:image']");
-            if (og && og.getAttribute ("content")) {
-                return og.getAttribute ("content");
-            }
-
-            const ss = document.querySelector (".screenshot_list");
-            if (ss) {
-                const img = ss.querySelector ("img");
-                if (img && img.src) return img.src;
-            }
-
-            return "";
+        if (raw.includes(".")) {
+            const first = raw.split(".")[0] + ".";
+            return first.length <= 200 ? first : first.slice(0, 197) + "...";
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 6. NSFW detection
-        // ════════════════════════════════════════════════════════════
+        return raw.length > 200 ? raw.slice(0, 197) + "..." : raw;
+    }
 
-        const NSFW_KEYWORDS = [
-            "adult", "nsfw", "erotic", "hentai", "porn", "mature", "sexual",
-            "18+", "furry", "s&m", "nudity", "yuri", "yaoi", "lewd",
-            "ecchi", "bdsm", "fetish",
-        ];
+    // ════════════════════════════════════════════════════════════
+    // 5. Thumbnail
+    // ════════════════════════════════════════════════════════════
 
-        function detectNSFW (tags, description) {
-            const tagsLower = (
-                tags || ""
-            ).toLowerCase ();
-            const descLower = (
-                description || ""
-            ).toLowerCase ();
+    function extractThumbnail() {
+        const og = document.querySelector("meta[property='og:image']");
+        if (og && og.getAttribute("content")) {
+            return og.getAttribute("content");
+        }
 
-            for (const kw of NSFW_KEYWORDS) {
-                if (tagsLower.includes (kw) || descLower.includes (kw)) {
-                    return "Yes";
-                }
-            }
+        const ss = document.querySelector(".screenshot_list");
+        if (ss) {
+            const img = ss.querySelector("img");
+            if (img && img.src) return img.src;
+        }
 
-            // Content warning div
-            if (
-                document.querySelector (".view_game_warning") ||
-                document.querySelector (".mature_content_notice")
-            ) {
+        return "";
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // 6. NSFW detection — multilingual keywords
+    // ════════════════════════════════════════════════════════════
+
+    /**
+     * Inlined NSFW keyword database (content script cannot import ES modules).
+     * Maintained in shared/nsfw-keywords.js — sync manually if updated.
+     */
+    const NSFW_KEYWORDS = [
+        // English
+        "adult", "nsfw", "erotic", "erotica", "hentai", "porn", "pornographic",
+        "mature", "sexual", "sexual content", "nudity", "nude", "naked",
+        "lewd", "ecchi", "bdsm", "fetish", "bondage", "s&m",
+        "furry", "yuri", "yaoi", "bara", "otome",
+        "sex", "intercourse", "orgasm", "masturbation",
+        "explicit", "xxx", "x-rated",
+        "stripshow", "striptease", "strip poker",
+        "ahegao", "tentacle", "tentacles",
+        "succubus", "incubus",
+        // Japanese
+        "\u30A8\u30ED", "\u30A8\u30C3\u30C1", "\u30D8\u30F3\u30BF\u30A4",
+        "\u304A\u3063\u3071\u3044", "\u88F8", "\u6210\u4EBA", "\u6027\u7684",
+        "\u5B98\u80FD", "\u767E\u5408", "\u3084\u304A\u3044",
+        // Chinese
+        "\u8272\u60C5", "\u88F8\u4F53", "\u88F8\u9AD4", "\u60C5\u8272",
+        "\u6027\u611F", "\u53D8\u6001", "\u8B8A\u614B", "\u7F8E\u5C11\u5973",
+        "\u5DE8\u4E73", "\u798F\u5229", "\u7981\u6B62\u672A\u6210\u5E74",
+        // Korean
+        "\uC131\uC778", "\uC57C\uD55C", "\uC5D0\uB85C", "\uB204\uB4DC",
+        "\uC139\uC2DC", "\uC131\uC801", "\uD5E8\uD0C0\uC774", "19\uAE08",
+        // Spanish / Portuguese
+        "adulto", "adulta", "er\u00F3tico", "er\u00F3tica",
+        "desnudo", "desnuda", "desnudez", "nudez",
+        "pornograf\u00EDa", "pornografia", "contenido adulto",
+        "conte\u00FAdo adulto", "solo adultos",
+        // French
+        "adulte", "\u00E9rotique", "nudit\u00E9", "sexuel", "sexuelle",
+        "pornographie", "pornographique", "contenu adulte",
+        // German
+        "erwachsene", "erotik", "erotisch", "nackt", "nacktheit",
+        "sexuell", "pornografie", "pornographisch", "ab 18",
+        // Russian
+        "\u0432\u0437\u0440\u043E\u0441\u043B\u044B\u0439", "\u044D\u0440\u043E\u0442\u0438\u043A\u0430",
+        "\u043F\u043E\u0440\u043D\u043E", "\u043E\u0431\u043D\u0430\u0436\u0451\u043D\u043D\u044B\u0439",
+        "\u0441\u0435\u043A\u0441", "\u0445\u0435\u043D\u0442\u0430\u0439",
+        // Vietnamese
+        "ng\u01B0\u1EDDi l\u1EDBn", "khi\u00EAu d\u00E2m", "kh\u1ECFa th\u00E2n",
+        "g\u1EE3i c\u1EA3m", "t\u00ECnh d\u1EE5c",
+        // Symbols / shorthand
+        "18+", "18 +", "r-18", "r18", "21+",
+        "n.s.f.w", "x-rated", "x rated",
+    ];
+
+    /**
+     * Detect NSFW status from tags, description, and page elements.
+     *
+     * @param {string[]} tags - Array of tag strings
+     * @param {string} description - Game description text
+     * @returns {string} "Yes" or "No"
+     */
+    function detectNSFW(tags, description) {
+        // Build searchable text from tags (array) + description
+        const tagsText = Array.isArray(tags) ? tags.join(" ").toLowerCase() : (tags || "").toLowerCase();
+        const descText = (description || "").toLowerCase();
+        const combined = tagsText + " " + descText;
+
+        for (const kw of NSFW_KEYWORDS) {
+            if (combined.includes(kw.toLowerCase())) {
                 return "Yes";
             }
-
-            return "No";
         }
 
-        // ════════════════════════════════════════════════════════════
-        // 7. Developer extraction (fallback for missing info table)
-        // ════════════════════════════════════════════════════════════
-
-        function extractDeveloper (infoTable) {
-            // Try info table first
-            const author = infoTable["Author"] || infoTable["Authors"];
-            if (author && author !== "N/A") return author;
-
-            // Fallback: creator link in page header
-            const creatorLink = document.querySelector (
-                ".game_author a, .user_link a"
-            );
-            if (creatorLink) return creatorLink.textContent.trim ();
-
-            // Fallback: extract from URL
-            const match = url.match (
-                /^https:\/\/([a-z0-9-]+)\.itch\.io\//i
-            );
-            return match ? match[1] : "N/A";
+        // Content warning div
+        if (
+            document.querySelector(".view_game_warning") ||
+            document.querySelector(".mature_content_notice")
+        ) {
+            return "Yes";
         }
 
-        // ════════════════════════════════════════════════════════════
-        // Build and send
-        // ════════════════════════════════════════════════════════════
-
-        const freeStatus = detectFreeStatus ();
-        const info = parseInfoTable ();
-        const description = extractDescription ();
-        const tags = info["Tags"] || "N/A";
-        const nsfw = detectNSFW (tags, description);
-
-        const gameData = {
-            url: url.split ("?")[0].split ("#")[0].replace (/\/+$/, ""),
-            name: extractTitle (),
-            is_free: freeStatus.isFree,
-            price: freeStatus.price,
-
-            // Info table fields
-            dev: extractDeveloper (info),
-            description,
-            genre: info["Genre"] || "N/A",
-            tags,
-            status: info["Status"] || "N/A",
-            platforms: info["Platforms"] || "N/A",
-            publisher: info["Publisher"] || "N/A",
-            release_date: info["Release date"] || "N/A",
-            made_with: info["Made with"] || "N/A",
-            rating: info["Rating"] || "N/A",
-            rating_count: info["RatingCount"] || "N/A",
-            average_session: info["Average session"] || "N/A",
-            languages: info["Languages"] || "N/A",
-            inputs: info["Inputs"] || "N/A",
-
-            // Derived fields
-            thumbnail: extractThumbnail (),
-            nsfw,
-        };
-
-        chrome.runtime.sendMessage (
-            {type: "GAME_DETECTED", data: gameData},
-            () => {
-                if (chrome.runtime.lastError) return;
-            }
-        );
+        return "No";
     }
-) ();
+
+    // ════════════════════════════════════════════════════════════
+    // 7. Developer extraction (fallback for missing info table)
+    // ════════════════════════════════════════════════════════════
+
+    function extractDeveloper(infoTable) {
+        const author = infoTable["Author"] || infoTable["Authors"];
+        if (author && author !== "N/A") return author;
+
+        const creatorLink = document.querySelector(".game_author a, .user_link a");
+        if (creatorLink) return creatorLink.textContent.trim();
+
+        const match = url.match(/^https:\/\/([a-z0-9-]+)\.itch\.io\//i);
+        return match ? match[1] : "N/A";
+    }
+
+    // ════════════════════════════════════════════════════════════
+    // Build and send
+    // ════════════════════════════════════════════════════════════
+
+    const freeStatus = detectFreeStatus();
+    const info = parseInfoTable();
+    const description = extractDescription();
+
+    // Multi-value fields: arrays (empty array if N/A)
+    const tags      = info["Tags"]      || [];
+    const platforms  = info["Platforms"]  || [];
+    const languages  = info["Languages"]  || [];
+    const inputs     = info["Inputs"]     || [];
+    const madeWith   = info["Made with"]  || [];
+    const genres     = info["Genre"]      || [];
+
+    const nsfw = detectNSFW(tags, description);
+
+    const gameData = {
+        url: url.split("?")[0].split("#")[0].replace(/\/+$/, ""),
+        name: extractTitle(),
+        is_free: freeStatus.isFree,
+        price: freeStatus.price,
+
+        // Single-value fields (strings)
+        dev: extractDeveloper(info),
+        description,
+        status: info["Status"] || "N/A",
+        publisher: info["Publisher"] || "N/A",
+        release_date: info["Release date"] || "N/A",
+        rating: info["Rating"] || "N/A",
+        rating_count: info["RatingCount"] || "N/A",
+        average_session: info["Average session"] || "N/A",
+
+        // Multi-value fields (arrays)
+        genre: genres.length > 0 ? genres[0] : "N/A",  // primary genre (string for editable field)
+        tags,             // ["Action", "Puzzle", "2D"]
+        platforms,        // ["Windows", "Linux", "HTML5"]
+        languages,        // ["English", "Japanese"]
+        inputs,           // ["Keyboard", "Mouse", "Gamepad"]
+        made_with: madeWith,  // ["Unity", "Godot"]
+
+        // Derived fields
+        thumbnail: extractThumbnail(),
+        nsfw,
+    };
+
+    chrome.runtime.sendMessage(
+        { type: "GAME_DETECTED", data: gameData },
+        () => {
+            if (chrome.runtime.lastError) return;
+        }
+    );
+})();
