@@ -13,15 +13,22 @@
  *     → Lightweight, minimal data in commit
  *
  *   "full_object"
- *     → Appends full game objects directly to scripts/game_info.json
- *     → Skips temp_link.json entirely — no backend re-scrape needed
- *     → Richer data in commit, immediate availability
+ *     → Appends full game objects to data_game/game_info_XXX.json
+ *     → Files are split at DATA_FILE_MAX_ENTRIES (500) entries each
+ *     → data_game/index.json tracks file list and entry counts
+ *     → Always uses Git Database API for atomic multi-file commits
  *
- * Both paths support unsigned (Contents API) and signed (Git Database API).
+ * Both paths support unsigned and signed (GPG) commits.
  * Merge strategy: JSON.parse existing → concat new → JSON.stringify
  */
 
-import {REPO_DATA_PATH, REPO_TEMP_PATH} from "../shared/constants.js";
+import {
+    DATA_FILE_MAX_ENTRIES,
+    DATA_FILE_PREFIX,
+    REPO_DATA_DIR,
+    REPO_INDEX_PATH,
+    REPO_TEMP_PATH,
+} from "../shared/constants.js";
 import {loadQueue, loadSettings, saveQueue} from "../shared/storage.js";
 import {extractGameId} from "../shared/utils.js";
 import {logError, logInfo, logWarn} from "../shared/logger.js";
@@ -29,6 +36,7 @@ import {
     createBlob,
     createSignedCommit,
     createTree,
+    createUnsignedCommit,
     getFileContent,
     getHeadCommit,
     invalidatePath,
@@ -86,39 +94,93 @@ function toFullObject (entry) {
     };
 }
 
+// ════════════════════════════════════════════════════════════
+// Index & file-splitting helpers
+// ════════════════════════════════════════════════════════════
+
 /**
- * Resolve target file path based on push format.
- *
- * @param {string} format - "url_only" | "full_object"
- * @returns {string} Repository file path
+ * Generate a zero-padded data file name.
+ * @param {number} num - File number (1-based)
+ * @returns {string} e.g. "game_info_001.json"
  */
-function resolveTargetPath (format) {
-    return format === "full_object" ? REPO_DATA_PATH : REPO_TEMP_PATH;
+function dataFileName (num) {
+    return `${DATA_FILE_PREFIX}${String (num).padStart (3, "0")}.json`;
 }
 
 /**
- * Serialize queue entries for the target format.
- *
- * @param {object[]} entries - Queue entries
- * @param {string} format - "url_only" | "full_object"
- * @returns {Array} Array of URL strings or full objects
+ * Read the index file from the repo. Returns default if missing.
+ * @returns {Promise<{data: object, raw: string|null}>}
  */
-function serializeEntries (entries, format) {
-    if (format === "full_object") {
-        return entries.map ((e) => toFullObject (e));
+async function readIndex () {
+    try {
+        const file = await getFileContent (REPO_INDEX_PATH, {
+            useCache: false,
+            allowMissing: true,
+        });
+        if (file && file.content && file.content.trim ()) {
+            const data = JSON.parse (file.content.trim ());
+            return {data};
+        }
     }
-    return entries.map ((e) => e.url);
+    catch (err) {
+        if (err.type === "auth") throw err;
+        await logWarn ("push", `Could not read index.json: ${err.message || err}`);
+    }
+    return {data: {max_per_file: DATA_FILE_MAX_ENTRIES, files: []}};
 }
 
 /**
- * Build commit message with format-specific target info.
+ * Distribute new entries across data files respecting the max-per-file limit.
+ *
+ * @param {object} indexData - Current index.json content
+ * @param {object[]} newEntries - Serialized entries to push
+ * @returns {{fileOps: Array<{path: string, entries: object[], isNew: boolean}>, updatedIndex: object}}
  */
-function buildCommitMessage (count, prefix, format) {
-    const date = new Date ().toISOString ()
-                            .slice (0, 10);
-    const target = format === "full_object" ? "game_info" : "temp_link";
-    return `${prefix} add ${count} game(s) to ${target} [${date}]`;
+function distributeEntries (indexData, newEntries) {
+    const maxPerFile = indexData.max_per_file || DATA_FILE_MAX_ENTRIES;
+    const files = [...(
+        indexData.files || []
+    )];
+    const fileOps = [];
+
+    let remaining = [...newEntries];
+
+    // If no files exist yet, seed the first one
+    if (files.length === 0) {
+        files.push ({name: dataFileName (1), count: 0});
+    }
+
+    while (remaining.length > 0) {
+        const current = files[files.length - 1];
+        const space = maxPerFile - current.count;
+
+        if (space > 0) {
+            const batch = remaining.splice (0, space);
+            fileOps.push ({
+                path: `${REPO_DATA_DIR}/${current.name}`,
+                entries: batch,
+                isNew: current.count === 0,
+            });
+            current.count += batch.length;
+        }
+
+        // Still entries left → create next file
+        if (remaining.length > 0) {
+            const nextNum = files.length + 1;
+            const newFile = {name: dataFileName (nextNum), count: 0};
+            files.push (newFile);
+        }
+    }
+
+    return {
+        fileOps,
+        updatedIndex: {max_per_file: maxPerFile, files},
+    };
 }
+
+// ════════════════════════════════════════════════════════════
+// Merge helper
+// ════════════════════════════════════════════════════════════
 
 /**
  * Merge new entries into existing JSON array.
@@ -147,23 +209,143 @@ function mergeJsonArray (existing, newEntries) {
 }
 
 // ════════════════════════════════════════════════════════════
-// Push execution paths
+// Push: full_object (multi-file via Git Database API)
 // ════════════════════════════════════════════════════════════
 
-async function executeUnsignedPush (entries, settings) {
-    const format = settings.push_format || "url_only";
-    const targetPath = resolveTargetPath (format);
-    const newEntries = serializeEntries (entries, format);
-    const commitMsg = buildCommitMessage (entries.length, settings.commit_prefix || "ext:", format);
+/**
+ * Execute a full_object push using Git Database API.
+ * Handles multi-file commits (data files + index.json) atomically.
+ * Works for both signed and unsigned commits.
+ */
+async function executeFullObjectPush (entries, settings, signed) {
+    const commitMsg = buildCommitMessage (entries.length, settings.commit_prefix || "ext:", "full_object");
+    const serialized = entries.map ((e) => toFullObject (e));
+
+    // 1. Read current index
+    const {data: indexData} = await readIndex ();
+
+    // 2. Distribute entries across files
+    const {fileOps, updatedIndex} = distributeEntries (indexData, serialized);
+
+    // 3. Build blobs for each data file
+    const blobEntries = [];
+
+    for (const op of fileOps) {
+        let existingContent = "";
+        if (!op.isNew) {
+            try {
+                const file = await getFileContent (op.path, {useCache: false, allowMissing: true});
+                if (file) existingContent = file.content;
+            }
+            catch (err) {
+                if (err.type === "auth") throw err;
+                await logWarn ("push", `Could not fetch ${op.path}: ${err.message}. Treating as new.`);
+            }
+        }
+
+        const merged = mergeJsonArray (existingContent, op.entries);
+        const blobSha = await createBlob (merged);
+        blobEntries.push ({path: op.path, blobSha});
+    }
+
+    // 4. Blob for updated index.json
+    const indexContent = JSON.stringify (updatedIndex, null, 4) + "\n";
+    const indexBlobSha = await createBlob (indexContent);
+    blobEntries.push ({path: REPO_INDEX_PATH, blobSha: indexBlobSha});
+
+    // 5. Create tree with all file changes
+    const head = await getHeadCommit ();
+    const treeSha = await createTree (head.treeSha, blobEntries);
+
+    // 6. Create commit (signed or unsigned)
+    const now = new Date ();
+    const unixTimestamp = Math.floor (now.getTime () / 1000);
+    const isoDate = new Date (unixTimestamp * 1000).toISOString ();
+
+    const committerName = settings.committer_name || "itch-f2p-ext[bot]";
+    const authorName = "itch-f2p-ext[bot]";
+    let committerEmail, authorEmail;
+
+    if (signed) {
+        const keyMeta = await getKeyMeta ();
+        const keyEmail = keyMeta?.userIDs?.[0]?.match (/<(.+?)>/)?.[1] || "";
+        committerEmail = keyEmail || settings.committer_email || "noreply@github.com";
+        authorEmail = settings.committer_email || committerEmail;
+    }
+    else {
+        committerEmail = settings.committer_email || "noreply@github.com";
+        authorEmail = committerEmail;
+    }
+
+    let commitSha;
+
+    if (signed) {
+        const payload = buildCommitPayload ({
+            treeSha,
+            parentSha: head.sha,
+            authorName,
+            authorEmail,
+            committerName,
+            committerEmail,
+            message: commitMsg,
+            timestamp: unixTimestamp,
+        });
+
+        const signResult = await signCommitPayload (payload);
+        if (!signResult.ok) {
+            throw {type: "gpg_failed", message: signResult.error};
+        }
+
+        commitSha = await createSignedCommit ({
+            treeSha,
+            parentSha: head.sha,
+            message: commitMsg,
+            signature: signResult.signature,
+            authorName,
+            authorEmail,
+            committerName,
+            committerEmail,
+            date: isoDate,
+        });
+    }
+    else {
+        commitSha = await createUnsignedCommit ({
+            treeSha,
+            parentSha: head.sha,
+            message: commitMsg,
+            authorName,
+            authorEmail,
+            committerName,
+            committerEmail,
+            date: isoDate,
+        });
+    }
+
+    await updateRef (commitSha);
+
+    // Invalidate cache for all touched paths
+    for (const op of fileOps) {
+        await invalidatePath (op.path);
+    }
+    await invalidatePath (REPO_INDEX_PATH);
+
+    return {ok: true, commitSha, signed, targetPath: REPO_INDEX_PATH};
+}
+
+// ════════════════════════════════════════════════════════════
+// Push: url_only (single file via Contents API — unchanged)
+// ════════════════════════════════════════════════════════════
+
+async function executeUrlOnlyUnsignedPush (entries, settings) {
+    const targetPath = REPO_TEMP_PATH;
+    const newEntries = entries.map ((e) => e.url);
+    const commitMsg = buildCommitMessage (entries.length, settings.commit_prefix || "ext:", "url_only");
 
     let existingContent = "";
     let existingSha = null;
 
     try {
-        const file = await getFileContent (targetPath, {
-            useCache: false,
-            allowMissing: true,
-        });
+        const file = await getFileContent (targetPath, {useCache: false, allowMissing: true});
         if (file) {
             existingContent = file.content;
             existingSha = file.sha;
@@ -180,11 +362,10 @@ async function executeUnsignedPush (entries, settings) {
     return {ok: true, commitSha: result.commitSha, targetPath};
 }
 
-async function executeSignedPush (entries, settings) {
-    const format = settings.push_format || "url_only";
-    const targetPath = resolveTargetPath (format);
-    const newEntries = serializeEntries (entries, format);
-    const commitMsg = buildCommitMessage (entries.length, settings.commit_prefix || "ext:", format);
+async function executeUrlOnlySignedPush (entries, settings) {
+    const targetPath = REPO_TEMP_PATH;
+    const newEntries = entries.map ((e) => e.url);
+    const commitMsg = buildCommitMessage (entries.length, settings.commit_prefix || "ext:", "url_only");
 
     const keyMeta = await getKeyMeta ();
     const keyEmail = keyMeta?.userIDs?.[0]?.match (/<(.+?)>/)?.[1] || "";
@@ -196,17 +377,12 @@ async function executeSignedPush (entries, settings) {
 
     let existingContent = "";
     try {
-        const file = await getFileContent (targetPath, {
-            useCache: false,
-            allowMissing: true,
-        });
-        if (file) {
-            existingContent = file.content;
-        }
+        const file = await getFileContent (targetPath, {useCache: false, allowMissing: true});
+        if (file) existingContent = file.content;
     }
     catch (err) {
         if (err.type === "auth") throw err;
-        await logWarn ("push", `Could not fetch ${targetPath} for signed push: ${err.message}`);
+        await logWarn ("push", `Could not fetch ${targetPath}: ${err.message}`);
     }
 
     const merged = mergeJsonArray (existingContent, newEntries);
@@ -220,15 +396,15 @@ async function executeSignedPush (entries, settings) {
     const isoDate = new Date (unixTimestamp * 1000).toISOString ();
 
     const payload = buildCommitPayload ({
-                                            treeSha,
-                                            parentSha: head.sha,
-                                            authorName,
-                                            authorEmail,
-                                            committerName,
-                                            committerEmail,
-                                            message: commitMsg,
-                                            timestamp: unixTimestamp,
-                                        });
+        treeSha,
+        parentSha: head.sha,
+        authorName,
+        authorEmail,
+        committerName,
+        committerEmail,
+        message: commitMsg,
+        timestamp: unixTimestamp,
+    });
 
     const signResult = await signCommitPayload (payload);
     if (!signResult.ok) {
@@ -236,27 +412,45 @@ async function executeSignedPush (entries, settings) {
     }
 
     const commitSha = await createSignedCommit ({
-                                                    treeSha,
-                                                    parentSha: head.sha,
-                                                    message: commitMsg,
-                                                    signature: signResult.signature,
-                                                    authorName,
-                                                    authorEmail,
-                                                    committerName,
-                                                    committerEmail,
-                                                    date: isoDate,
-                                                });
+        treeSha,
+        parentSha: head.sha,
+        message: commitMsg,
+        signature: signResult.signature,
+        authorName,
+        authorEmail,
+        committerName,
+        committerEmail,
+        date: isoDate,
+    });
 
     await updateRef (commitSha);
 
     return {ok: true, commitSha, signed: true, targetPath};
 }
 
+// ════════════════════════════════════════════════════════════
+// Dispatch
+// ════════════════════════════════════════════════════════════
+
+function buildCommitMessage (count, prefix, format) {
+    const date = new Date ().toISOString ().slice (0, 10);
+    const target = format === "full_object" ? "game_info" : "temp_link";
+    return `${prefix} add ${count} game(s) to ${target} [${date}]`;
+}
+
 async function executePush (entries, settings) {
-    if (settings.gpg_enabled && await isSigningAvailable ()) {
-        return executeSignedPush (entries, settings);
+    const format = settings.push_format || "url_only";
+
+    if (format === "full_object") {
+        const signed = settings.gpg_enabled && await isSigningAvailable ();
+        return executeFullObjectPush (entries, settings, signed);
     }
-    return executeUnsignedPush (entries, settings);
+
+    // url_only
+    if (settings.gpg_enabled && await isSigningAvailable ()) {
+        return executeUrlOnlySignedPush (entries, settings);
+    }
+    return executeUrlOnlyUnsignedPush (entries, settings);
 }
 
 // ════════════════════════════════════════════════════════════
@@ -267,7 +461,7 @@ export async function pushQueue (opts = {}) {
     const settings = await loadSettings ();
 
     if (!settings.github_owner || !settings.github_repo || !settings.github_token) {
-        return {ok: false, pushed: 0, error: "GitHub not configured \u2014 check Settings"};
+        return {ok: false, pushed: 0, error: "GitHub not configured — check Settings"};
     }
 
     const queue = await loadQueue ();
@@ -302,12 +496,11 @@ export async function pushQueue (opts = {}) {
 
             if (result.ok) {
                 await saveQueue (toKeep);
-                await invalidatePath (result.targetPath);
-                refreshDedupCache ()
-                    .catch (() => {});
+                refreshDedupCache ().catch (() => {});
 
                 const signedLabel = result.signed ? " (GPG signed)" : "";
-                const targetLabel = result.targetPath === REPO_DATA_PATH ? "game_info.json" : "temp_link.json";
+                const format = settings.push_format || "url_only";
+                const targetLabel = format === "full_object" ? "data_game/" : "temp_link.json";
                 await logInfo ("push", `Successfully pushed ${toPush.length} game(s)${signedLabel} → ${targetLabel}`, {
                     commitSha: result.commitSha,
                     remaining: toKeep.length,
@@ -327,7 +520,7 @@ export async function pushQueue (opts = {}) {
         }
         catch (err) {
             if (err.type === "conflict" && attempts < maxAttempts) {
-                await logWarn ("push", "SHA conflict \u2014 retrying with fresh SHA...");
+                await logWarn ("push", "SHA conflict — retrying with fresh SHA...");
                 continue;
             }
 
@@ -345,7 +538,7 @@ export async function pushQueue (opts = {}) {
 
             return {
                 ok: false, pushed: 0,
-                error: err.message || "Push failed \u2014 check logs for details",
+                error: err.message || "Push failed — check logs for details",
             };
         }
     }
@@ -380,14 +573,13 @@ export async function pushQueueUnsigned (opts = {}) {
     await logInfo ("push", `Pushing ${toPush.length} game(s) unsigned (GPG fallback)...`);
 
     try {
-        const result = await executeUnsignedPush (toPush, overridden);
+        const result = await executePush (toPush, overridden);
         if (result.ok) {
             await saveQueue (toKeep);
-            await invalidatePath (result.targetPath);
-            refreshDedupCache ()
-                .catch (() => {});
+            refreshDedupCache ().catch (() => {});
 
-            const targetLabel = result.targetPath === REPO_DATA_PATH ? "game_info.json" : "temp_link.json";
+            const format = overridden.push_format || "url_only";
+            const targetLabel = format === "full_object" ? "data_game/" : "temp_link.json";
             await logInfo ("push", `Pushed ${toPush.length} game(s) unsigned → ${targetLabel}`, {
                 commitSha: result.commitSha,
                 target: targetLabel,

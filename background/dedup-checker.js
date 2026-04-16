@@ -12,7 +12,7 @@
  *   - temp_link.json: array of URL strings OR objects with "url" field
  */
 
-import {REPO_DATA_PATH, REPO_TEMP_PATH} from "../shared/constants.js";
+import {REPO_DATA_DIR, REPO_INDEX_PATH, REPO_TEMP_PATH} from "../shared/constants.js";
 import {loadCachedUrls, loadQueue, loadSettings, saveCachedUrls} from "../shared/storage.js";
 import {normalizeUrl} from "../shared/utils.js";
 import {logDebug, logInfo, logWarn} from "../shared/logger.js";
@@ -64,6 +64,10 @@ function extractUrlsFromJSON (jsonContent) {
 
 /**
  * Fetch all known URLs from the remote repository.
+ *
+ * Data files are stored as data_game/game_info_001.json, _002.json, etc.
+ * The file list is read from data_game/index.json.
+ * temp_link.json remains at scripts/temp_link.json.
  */
 export async function fetchRemoteUrls (forceRefresh = false) {
     const settings = await loadSettings ();
@@ -95,20 +99,40 @@ export async function fetchRemoteUrls (forceRefresh = false) {
 
     const allUrls = [];
 
-    // 1) game_info.json — main data store
+    // 1) Read data_game/index.json → fetch each data file
     try {
-        const dataFile = await getFileContent (REPO_DATA_PATH, {
+        const indexFile = await getFileContent (REPO_INDEX_PATH, {
             useCache: !forceRefresh,
             allowMissing: true,
         });
-        if (dataFile) {
-            const urls = extractUrlsFromJSON (dataFile.content);
-            allUrls.push (...urls);
-            await logDebug ("dedup", `game_info.json: ${urls.length} URLs`);
+        if (indexFile && indexFile.content.trim ()) {
+            const indexData = JSON.parse (indexFile.content.trim ());
+            const fileList = indexData.files || [];
+
+            // Fetch all data files in parallel
+            const fetches = fileList.map ((f) =>
+                getFileContent (`${REPO_DATA_DIR}/${f.name}`, {
+                    useCache: !forceRefresh,
+                    allowMissing: true,
+                }).catch ((err) => {
+                    logWarn ("dedup", `Failed to fetch ${f.name}: ${err.message || err}`);
+                    return null;
+                }),
+            );
+
+            const results = await Promise.all (fetches);
+            for (let i = 0; i < results.length; i++) {
+                if (results[i] && results[i].content) {
+                    const urls = extractUrlsFromJSON (results[i].content);
+                    allUrls.push (...urls);
+                    await logDebug ("dedup", `${fileList[i].name}: ${urls.length} URLs`);
+                }
+            }
         }
     }
     catch (err) {
-        await logWarn ("dedup", `Failed to fetch game_info.json: ${err.message || err}`);
+        if (err.type === "auth") throw err;
+        await logWarn ("dedup", `Failed to read index.json: ${err.message || err}`);
     }
 
     // 2) temp_link.json — pending queue

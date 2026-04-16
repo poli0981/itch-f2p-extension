@@ -210,11 +210,15 @@ export async function createBlob (content) {
     return data.sha;
 }
 
-export async function createTree (baseTreeSha, path, blobSha) {
-    const data = await githubFetch ("POST", "/git/trees", {
-        base_tree: baseTreeSha,
-        tree: [{path, mode: "100644", type: "blob", sha: blobSha}],
-    });
+export async function createTree (baseTreeSha, pathOrEntries, blobSha) {
+    let tree;
+    if (Array.isArray (pathOrEntries)) {
+        tree = pathOrEntries.map ((e) => ({path: e.path, mode: "100644", type: "blob", sha: e.blobSha}));
+    }
+    else {
+        tree = [{path: pathOrEntries, mode: "100644", type: "blob", sha: blobSha}];
+    }
+    const data = await githubFetch ("POST", "/git/trees", {base_tree: baseTreeSha, tree});
     return data.sha;
 }
 
@@ -236,6 +240,28 @@ export async function createSignedCommit ({
         message, tree: treeSha, parents: [parentSha], author, committer, signature,
     });
     await logInfo ("github", `Created signed commit: ${data.sha.slice (0, 7)}`);
+    return data.sha;
+}
+
+export async function createUnsignedCommit ({
+                                                treeSha, parentSha, message,
+                                                authorName, authorEmail,
+                                                committerName, committerEmail, date,
+                                            }) {
+    const author = {
+        name: authorName || "itch-f2p-ext[bot]",
+        email: authorEmail || "noreply@github.com",
+        date,
+    };
+    const committer = {
+        name: committerName || authorName || "itch-f2p-ext[bot]",
+        email: committerEmail || authorEmail || "noreply@github.com",
+        date,
+    };
+    const data = await githubFetch ("POST", "/git/commits", {
+        message, tree: treeSha, parents: [parentSha], author, committer,
+    });
+    await logInfo ("github", `Created unsigned commit: ${data.sha.slice (0, 7)}`);
     return data.sha;
 }
 
