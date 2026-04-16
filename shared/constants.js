@@ -17,8 +17,11 @@
 export const GITHUB_API_BASE = "https://api.github.com";
 
 // ── Repository paths ──
-export const REPO_DATA_PATH = "scripts/game_info.json";
-export const REPO_TEMP_PATH = "scripts/temp_link.json";
+export const REPO_DATA_DIR        = "data_game";
+export const REPO_INDEX_PATH      = "data_game/index.json";
+export const DATA_FILE_MAX_ENTRIES = 500;
+export const DATA_FILE_PREFIX     = "game_info_";
+export const REPO_TEMP_PATH       = "scripts/temp_link.json";
 
 // ── itch.io ──
 // Game page URL pattern: https://{creator}.itch.io/{slug}

@@ -60,13 +60,6 @@ export async function saveSettings (settings) {
     await storageSet (STORAGE_KEYS.SETTINGS, settings);
 }
 
-export async function updateSettings (partial) {
-    const current = await loadSettings ();
-    const updated = {...current, ...partial};
-    await saveSettings (updated);
-    return updated;
-}
-
 // ── Queue ──
 
 export async function loadQueue () {
