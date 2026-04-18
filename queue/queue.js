@@ -15,7 +15,7 @@
 
 import { MSG, EDITABLE_FIELDS, GENRE_PRESETS } from "../shared/constants.js";
 import { formatTime, truncate } from "../shared/utils.js";
-import { $, sendMessage, showToast } from "../shared/ui.js";
+import { $, sendMessage, showToast, showActionToast } from "../shared/ui.js";
 
 const queueCountEl = $("#queueCount");
 const queueGrid    = $("#queueGrid");
@@ -25,7 +25,20 @@ const refreshBtn   = $("#refreshBtn");
 const pushAllBtn   = $("#pushAllBtn");
 const clearAllBtn  = $("#clearAllBtn");
 
+// ── Bulk selection toolbar ──
+const bulkToolbar       = $("#bulkToolbar");
+const bulkCount         = $("#bulkCount");
+const bulkSelectAllBtn  = $("#bulkSelectAllBtn");
+const bulkClearBtn      = $("#bulkClearBtn");
+const bulkRemoveBtn     = $("#bulkRemoveBtn");
+const bulkPushBtn       = $("#bulkPushBtn");
+const bulkRemoveCount   = $("#bulkRemoveCount");
+const bulkPushCount     = $("#bulkPushCount");
+
 let currentQueue = [];
+let filteredUrls = [];  // URLs currently visible after search filter (preserves order)
+const selection = new Set();  // Selected URLs
+let lastAnchorUrl = null;  // Last checkbox toggled, for Shift+click range select
 
 // ── Render ──
 
@@ -49,6 +62,16 @@ function renderQueue(queue, filter = "") {
                    madeStr.toLowerCase().includes(q);
         });
     }
+
+    filteredUrls = filtered.map((g) => g.url);
+
+    // Prune selection to only include URLs still present in queue
+    for (const url of [...selection]) {
+        if (!queue.some((g) => g.url === url)) {
+            selection.delete(url);
+        }
+    }
+    updateBulkToolbar();
 
     if (filtered.length === 0) {
         queueGrid.innerHTML = "";
@@ -82,6 +105,7 @@ function createCard(game) {
     const card = document.createElement("div");
     card.className = "game-card";
     card.dataset.url = game.url;
+    if (selection.has(game.url)) card.classList.add("selected");
 
     // ── Header with thumbnail ──
     const header = document.createElement("div");
@@ -100,7 +124,25 @@ function createCard(game) {
         nsfwBadge.className = "game-card-nsfw-badge";
         nsfwBadge.textContent = "NSFW";
         header.appendChild(nsfwBadge);
+        card.classList.add("has-nsfw");
     }
+
+    // Bulk-select checkbox
+    const selectBox = document.createElement("input");
+    selectBox.type = "checkbox";
+    selectBox.className = "game-card-select";
+    selectBox.title = "Select for bulk action (Shift+click for range)";
+    selectBox.checked = selection.has(game.url);
+    selectBox.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (e.shiftKey && lastAnchorUrl && lastAnchorUrl !== game.url) {
+            applyRangeSelection(lastAnchorUrl, game.url, selectBox.checked);
+        } else {
+            toggleSelection(game.url, selectBox.checked);
+        }
+        lastAnchorUrl = game.url;
+    });
+    header.appendChild(selectBox);
 
     const removeBtn = document.createElement("button");
     removeBtn.className = "game-card-remove";
@@ -377,15 +419,155 @@ function makeMetaTag(text) {
     return span;
 }
 
+// ── Bulk selection ──
+
+function toggleSelection(url, checked) {
+    if (checked) selection.add(url);
+    else selection.delete(url);
+    applySelectionUI(url);
+    updateBulkToolbar();
+}
+
+function applyRangeSelection(fromUrl, toUrl, targetState) {
+    const fromIdx = filteredUrls.indexOf(fromUrl);
+    const toIdx = filteredUrls.indexOf(toUrl);
+    if (fromIdx < 0 || toIdx < 0) {
+        toggleSelection(toUrl, targetState);
+        return;
+    }
+    const [start, end] = fromIdx < toIdx ? [fromIdx, toIdx] : [toIdx, fromIdx];
+    for (let i = start; i <= end; i++) {
+        const url = filteredUrls[i];
+        if (targetState) selection.add(url);
+        else selection.delete(url);
+        applySelectionUI(url);
+    }
+    updateBulkToolbar();
+}
+
+function applySelectionUI(url) {
+    const card = queueGrid.querySelector(`.game-card[data-url="${CSS.escape(url)}"]`);
+    if (!card) return;
+    const checkbox = card.querySelector(".game-card-select");
+    const selected = selection.has(url);
+    card.classList.toggle("selected", selected);
+    if (checkbox) checkbox.checked = selected;
+}
+
+function selectAllVisible() {
+    for (const url of filteredUrls) selection.add(url);
+    for (const url of filteredUrls) applySelectionUI(url);
+    updateBulkToolbar();
+}
+
+function clearSelection() {
+    const prev = [...selection];
+    selection.clear();
+    for (const url of prev) applySelectionUI(url);
+    lastAnchorUrl = null;
+    updateBulkToolbar();
+}
+
+function updateBulkToolbar() {
+    const n = selection.size;
+    if (n === 0) {
+        bulkToolbar.style.display = "none";
+        return;
+    }
+    bulkToolbar.style.display = "flex";
+    bulkCount.textContent = String(n);
+    bulkRemoveCount.textContent = String(n);
+    bulkPushCount.textContent = String(n);
+}
+
+async function handleBulkPush() {
+    if (selection.size === 0) return;
+    if (!confirm(`Push ${selection.size} selected game(s) to GitHub?`)) return;
+
+    const urls = [...selection];
+    bulkPushBtn.disabled = true;
+    const origHTML = bulkPushBtn.innerHTML;
+    bulkPushBtn.innerHTML = `<span class="spinner"></span> Pushing ${urls.length}...`;
+
+    const resp = await sendMessage(MSG.PUSH_QUEUE, { urls });
+
+    if (resp?.ok) {
+        const label = resp.signed ? " (GPG signed)" : "";
+        const target = resp.target ? ` \u2192 ${resp.target}` : "";
+        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success");
+        selection.clear();
+        await loadQueue();
+    } else if (resp?.gpgFailed) {
+        const fallback = confirm(`GPG signing failed: ${resp.error}\n\nPush unsigned instead?`);
+        if (fallback) {
+            const unsignedResp = await sendMessage(MSG.PUSH_QUEUE_UNSIGNED, { urls });
+            if (unsignedResp?.ok) {
+                showToast(`Pushed ${unsignedResp.pushed} game(s) (unsigned)`, "success");
+                selection.clear();
+                await loadQueue();
+            } else {
+                showToast(unsignedResp?.error || "Unsigned push failed", "error");
+            }
+        }
+    } else {
+        showToast(resp?.error || "Push failed", "error");
+    }
+
+    bulkPushBtn.disabled = false;
+    bulkPushBtn.innerHTML = origHTML;
+}
+
+async function handleBulkRemove() {
+    if (selection.size === 0) return;
+    if (!confirm(`Remove ${selection.size} selected game(s) from queue?`)) return;
+
+    const urls = [...selection];
+    bulkRemoveBtn.disabled = true;
+    const origHTML = bulkRemoveBtn.innerHTML;
+    bulkRemoveBtn.innerHTML = `<span class="spinner"></span> Removing...`;
+
+    for (const url of urls) {
+        await sendMessage(MSG.REMOVE_FROM_QUEUE, { url });
+    }
+
+    showToast(`Removed ${urls.length} game(s) from queue`, "info");
+    selection.clear();
+    await loadQueue();
+
+    bulkRemoveBtn.disabled = false;
+    bulkRemoveBtn.innerHTML = origHTML;
+}
+
 // ── Handlers ──
 
 async function handleRemove(gameUrl, name) {
+    // Snapshot the full entry before deletion so we can restore via undo
+    const snapshot = currentQueue.find((g) => g.url === gameUrl);
     const resp = await sendMessage(MSG.REMOVE_FROM_QUEUE, { url: gameUrl });
     if (resp?.ok) {
-        showToast(`Removed: ${name || "Game"}`, "info");
-        await loadQueue();
+        if (snapshot) {
+            showActionToast(
+                `Removed: ${name || "Game"}`,
+                { label: "Undo", onClick: () => restoreEntry(snapshot) },
+                "info",
+                5000,
+            );
+        } else {
+            showToast(`Removed: ${name || "Game"}`, "info");
+        }
+        // Storage.onChanged listener will re-render the queue
     } else {
         showToast(resp?.error || "Failed to remove", "error");
+    }
+}
+
+async function restoreEntry(entry) {
+    if (!entry?.url) return;
+    const resp = await sendMessage(MSG.ADD_TO_QUEUE, entry);
+    if (resp?.ok) {
+        showToast(`Restored: ${entry.name || "Game"}`, "success");
+    } else {
+        showToast(resp?.error || "Failed to restore", "error");
     }
 }
 
@@ -463,16 +645,39 @@ clearAllBtn.addEventListener("click", async () => {
     clearAllBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear`;
 });
 
+// ── Bulk toolbar button bindings ──
+bulkSelectAllBtn.addEventListener("click", selectAllVisible);
+bulkClearBtn.addEventListener("click", clearSelection);
+bulkPushBtn.addEventListener("click", handleBulkPush);
+bulkRemoveBtn.addEventListener("click", handleBulkRemove);
+
 // ── Keyboard shortcuts ──
 document.addEventListener("keydown", (e) => {
+    const isInputFocus = document.activeElement?.tagName === "INPUT" || document.activeElement?.tagName === "TEXTAREA";
+
+    // Ctrl+A: select all visible (when not in input)
+    if (e.ctrlKey && e.key === "a" && !isInputFocus) {
+        e.preventDefault();
+        selectAllVisible();
+        return;
+    }
+
+    // Focus search: Ctrl+F or "/"
     if ((e.ctrlKey && e.key === "f") || (e.key === "/" && document.activeElement !== searchInput)) {
         e.preventDefault();
         searchInput.focus();
+        return;
     }
-    if (e.key === "Escape" && document.activeElement === searchInput) {
-        searchInput.value = "";
-        renderQueue(currentQueue, "");
-        searchInput.blur();
+
+    // Escape: clear search first, then selection
+    if (e.key === "Escape") {
+        if (document.activeElement === searchInput) {
+            searchInput.value = "";
+            renderQueue(currentQueue, "");
+            searchInput.blur();
+        } else if (selection.size > 0) {
+            clearSelection();
+        }
     }
 });
 

@@ -71,6 +71,40 @@
         <input class = "input search-input" type = "text" id = "searchInput" placeholder = "Search queue...">
     </div>
 
+    <!-- ── Bulk selection toolbar — appears only when selection is non-empty ── -->
+    <div class = "bulk-toolbar" id = "bulkToolbar" style = "display:none">
+        <span class = "bulk-count">
+            <strong id = "bulkCount">0</strong> selected
+        </span>
+        <button class = "btn btn-ghost btn-sm" id = "bulkSelectAllBtn" title = "Select all visible (Ctrl+A)">
+            Select all
+        </button>
+        <button class = "btn btn-ghost btn-sm" id = "bulkClearBtn" title = "Clear selection (Esc)">
+            Clear
+        </button>
+        <div class = "bulk-spacer"></div>
+        <button class = "btn btn-danger btn-sm" id = "bulkRemoveBtn">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <polyline points = "3 6 5 6 21 6"/>
+                <path d = "M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+            </svg>
+            Remove <span id = "bulkRemoveCount">0</span>
+        </button>
+        <button class = "btn btn-success btn-sm" id = "bulkPushBtn">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2.5" stroke-linecap = "round"
+            >
+                <line x1 = "12" y1 = "19" x2 = "12" y2 = "5"/>
+                <polyline points = "5 12 12 5 19 12"/>
+            </svg>
+            Push <span id = "bulkPushCount">0</span>
+        </button>
+    </div>
+
     <div class = "queue-grid" id = "queueGrid"></div>
 
     <div class = "empty-state" id = "emptyState" style = "display:none">
