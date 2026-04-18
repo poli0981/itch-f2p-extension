@@ -172,3 +172,45 @@ export async function getQueueSize () {
     const queue = await loadQueue ();
     return queue.length;
 }
+
+/**
+ * Reorder the queue according to a list of URLs (normalized game IDs).
+ * URLs not in the current queue are ignored; entries missing from the order
+ * list are appended at the end in their original order (defensive).
+ *
+ * @param {string[]} orderedUrls - Normalized URLs in desired order
+ * @returns {Promise<{ok: boolean, data?: {queueSize: number}, error?: string}>}
+ */
+export async function reorderQueue (orderedUrls) {
+    if (!Array.isArray (orderedUrls)) {
+        return {ok: false, error: "Invalid order list"};
+    }
+
+    const queue = await loadQueue ();
+    const byId = new Map ();
+    for (const entry of queue) {
+        const id = extractGameId (entry.url);
+        if (id) byId.set (id, entry);
+    }
+
+    const reordered = [];
+    const consumed = new Set ();
+
+    for (const url of orderedUrls) {
+        const id = extractGameId (url);
+        if (id && byId.has (id) && !consumed.has (id)) {
+            reordered.push (byId.get (id));
+            consumed.add (id);
+        }
+    }
+
+    // Append any entries that weren't in the order list (defensive — should be rare)
+    for (const entry of queue) {
+        const id = extractGameId (entry.url);
+        if (id && !consumed.has (id)) reordered.push (entry);
+    }
+
+    await saveQueue (reordered);
+    await logInfo ("queue", `Queue reordered (${reordered.length} entries)`);
+    return {ok: true, data: {queueSize: reordered.length}};
+}

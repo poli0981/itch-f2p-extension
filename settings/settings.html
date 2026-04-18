@@ -331,6 +331,49 @@
         </div>
     </section>
 
+    <!-- Appearance -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round" stroke-linejoin = "round"
+            >
+                <circle cx = "12" cy = "12" r = "5"/>
+                <line x1 = "12" y1 = "1" x2 = "12" y2 = "3"/>
+                <line x1 = "12" y1 = "21" x2 = "12" y2 = "23"/>
+                <line x1 = "4.22" y1 = "4.22" x2 = "5.64" y2 = "5.64"/>
+                <line x1 = "18.36" y1 = "18.36" x2 = "19.78" y2 = "19.78"/>
+                <line x1 = "1" y1 = "12" x2 = "3" y2 = "12"/>
+                <line x1 = "21" y1 = "12" x2 = "23" y2 = "12"/>
+            </svg>
+            Appearance
+        </h2>
+        <div class = "theme-picker" role = "radiogroup" aria-label = "Theme">
+            <label class = "theme-option">
+                <input type = "radio" name = "theme_mode" value = "system">
+                <span class = "theme-option-label">
+                    <span class = "theme-option-dot theme-dot-system"></span>
+                    System
+                </span>
+            </label>
+            <label class = "theme-option">
+                <input type = "radio" name = "theme_mode" value = "dark">
+                <span class = "theme-option-label">
+                    <span class = "theme-option-dot theme-dot-dark"></span>
+                    Dark
+                </span>
+            </label>
+            <label class = "theme-option">
+                <input type = "radio" name = "theme_mode" value = "light">
+                <span class = "theme-option-label">
+                    <span class = "theme-option-dot theme-dot-light"></span>
+                    Light
+                </span>
+            </label>
+        </div>
+        <span class = "field-hint">System follows your OS preference. Dark and Light override it.</span>
+    </section>
+
     <!-- Statistics -->
     <section class = "settings-section">
         <h2 class = "section-heading">

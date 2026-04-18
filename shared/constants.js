@@ -99,6 +99,7 @@ export const MSG = {
     ADD_TO_QUEUE:        "ADD_TO_QUEUE",
     REMOVE_FROM_QUEUE:   "REMOVE_FROM_QUEUE",
     UPDATE_ENTRY:        "UPDATE_ENTRY",
+    REORDER_QUEUE:       "REORDER_QUEUE",
     PUSH_QUEUE:          "PUSH_QUEUE",
     GET_SETTINGS:        "GET_SETTINGS",
     SAVE_SETTINGS:       "SAVE_SETTINGS",
