@@ -36,7 +36,17 @@
     <div class = "section-label">Current Page</div>
     <div class = "card detected-card" id = "detectedCard">
         <div class = "detected-loading" id = "detectedLoading">
-            <span class = "text-muted text-sm">Checking page...</span>
+            <div class = "detected-row">
+                <div class = "skeleton skeleton-thumb detected-thumb"></div>
+                <div class = "detected-info" style = "width:100%">
+                    <div class = "skeleton skeleton-line" style = "width:75%"></div>
+                    <div class = "skeleton skeleton-line" style = "width:55%; height:11px"></div>
+                    <div class = "detected-badges">
+                        <span class = "skeleton skeleton-badge"></span>
+                        <span class = "skeleton skeleton-badge" style = "width:38px"></span>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class = "detected-content" id = "detectedContent" style = "display:none">
             <div class = "detected-row">

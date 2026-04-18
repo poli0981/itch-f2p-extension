@@ -10,7 +10,7 @@ body {
     background : var(--bg-tertiary);
 }
 
-/* ── Header (sticky with subtle glass) ── */
+/* ── Header (sticky with subtle glass + gradient accent line) ── */
 .popup-header {
     display                 : flex;
     align-items             : center;
@@ -23,6 +23,23 @@ body {
     position                : sticky;
     top                     : 0;
     z-index                 : 10;
+}
+
+/* Subtle gradient accent line under the header border */
+.popup-header::after {
+    content    : "";
+    position   : absolute;
+    left       : 0; right : 0; bottom : -1px;
+    height     : 1px;
+    background : linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--accent-glow) 25%,
+        var(--accent-glow) 75%,
+        transparent 100%
+    );
+    opacity    : 0.6;
+    pointer-events : none;
 }
 
 .logo-icon {
@@ -113,11 +130,14 @@ body {
     flex-wrap  : wrap;
 }
 
-.detected-loading,
 .detected-none,
 .detected-duplicate {
     text-align : center;
     padding    : var(--space-sm) 0;
+}
+
+.detected-loading {
+    padding : var(--space-xs) 0;
 }
 
 /* ── Queue Summary ── */
@@ -130,7 +150,7 @@ body {
 }
 
 .queue-bar {
-    height        : 3px;
+    height        : 4px;
     background    : var(--bg-secondary);
     border-radius : 2px;
     margin-top    : var(--space-sm);
@@ -141,13 +161,35 @@ body {
     height        : 100%;
     background    : var(--accent);
     border-radius : 2px;
-    transition    : width var(--transition-slow);
+    transition    : width var(--transition-slow), background var(--transition);
     min-width     : 0;
+    position      : relative;
 }
 
 .queue-bar-fill.warning { background : var(--accent-yellow); }
 
-.queue-bar-fill.full { background : var(--accent-red); }
+.queue-bar-fill.full    { background : var(--accent-red); }
+
+/* Animated shimmer overlay when near capacity ── draws attention to push */
+.queue-bar-fill.warning::after,
+.queue-bar-fill.full::after {
+    content       : "";
+    position      : absolute;
+    inset         : 0;
+    background    : linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.45) 50%,
+        transparent 100%
+    );
+    animation     : queue-bar-shimmer 1.8s ease-in-out infinite;
+    border-radius : inherit;
+}
+
+@keyframes queue-bar-shimmer {
+    0%   { transform : translateX(-100%); }
+    100% { transform : translateX(100%); }
+}
 
 /* ── Actions ── */
 .popup-actions {

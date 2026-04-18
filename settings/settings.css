@@ -10,6 +10,23 @@ body { background : var(--bg-tertiary); }
     display       : flex; align-items : center; justify-content : space-between;
     margin-bottom : var(--space-xl); padding-bottom : var(--space-lg);
     border-bottom : 1px solid var(--border);
+    position      : relative;
+}
+
+.page-header::after {
+    content    : "";
+    position   : absolute;
+    left       : 0; right : 0; bottom : -1px;
+    height     : 1px;
+    background : linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--accent-glow) 30%,
+        var(--accent-glow) 70%,
+        transparent 100%
+    );
+    opacity    : 0.5;
+    pointer-events : none;
 }
 
 .header-icon { color : var(--accent); }
@@ -156,9 +173,21 @@ body { background : var(--bg-tertiary); }
 }
 
 .stat-card {
-    background    : var(--bg-secondary); border : 1px solid var(--border-subtle);
+    background    : linear-gradient(
+        160deg,
+        var(--bg-secondary) 0%,
+        rgba(34, 29, 46, 0.6) 100%
+    );
+    border        : 1px solid var(--border-strong);
     border-radius : var(--radius); padding : var(--space-md);
     display       : flex; flex-direction : column; gap : var(--space-xs);
+    box-shadow    : var(--shadow-sm);
+    transition    : transform var(--transition), box-shadow var(--transition);
+}
+
+.stat-card:hover {
+    transform  : translateY(-1px);
+    box-shadow : var(--shadow-md);
 }
 
 .stat-label {

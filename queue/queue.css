@@ -11,6 +11,24 @@ body { background : var(--bg-tertiary); }
     display       : flex; align-items : center; justify-content : space-between;
     margin-bottom : var(--space-xl); padding-bottom : var(--space-lg);
     border-bottom : 1px solid var(--border);
+    position      : relative;
+}
+
+/* Gradient accent line under page header */
+.page-header::after {
+    content    : "";
+    position   : absolute;
+    left       : 0; right : 0; bottom : -1px;
+    height     : 1px;
+    background : linear-gradient(
+        90deg,
+        transparent 0%,
+        var(--accent-glow) 30%,
+        var(--accent-glow) 70%,
+        transparent 100%
+    );
+    opacity    : 0.5;
+    pointer-events : none;
 }
 
 .header-icon { color : var(--accent); }
@@ -113,13 +131,28 @@ body { background : var(--bg-tertiary); }
 
 .edit-toggle:hover { opacity : 1; }
 
-/* ── Auto panel ── */
+/* ── Auto panel (collapsible with smooth transition) ── */
 .game-card-auto {
-    display    : none; padding : var(--space-sm) var(--space-md) var(--space-md);
-    background : rgba(0, 0, 0, 0.15); border-top : 1px solid var(--border-subtle);
+    max-height       : 0;
+    opacity          : 0;
+    overflow         : hidden;
+    padding          : 0 var(--space-md);
+    background       : rgba(0, 0, 0, 0.15);
+    border-top       : 1px solid transparent;
+    transition       : max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       opacity 0.2s ease,
+                       padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       border-top-color 0.2s ease;
 }
 
-.game-card-auto.open { display : block; }
+.game-card-auto.open {
+    max-height       : 800px;
+    opacity          : 1;
+    padding-top      : var(--space-sm);
+    padding-bottom   : var(--space-md);
+    border-top-color : var(--border-subtle);
+}
 
 .auto-row { display : flex; gap : var(--space-sm); margin-bottom : var(--space-sm); line-height : 1.4; }
 
@@ -141,13 +174,27 @@ body { background : var(--bg-tertiary); }
     color         : var(--text-secondary); white-space : nowrap;
 }
 
-/* ── Edit panel ── */
+/* ── Edit panel (collapsible with smooth transition) ── */
 .game-card-fields {
-    padding    : 0 var(--space-md) var(--space-md); display : none;
-    border-top : 1px solid var(--border-subtle);
+    max-height       : 0;
+    opacity          : 0;
+    overflow         : hidden;
+    padding          : 0 var(--space-md);
+    border-top       : 1px solid transparent;
+    transition       : max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       opacity 0.2s ease,
+                       padding-top 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       padding-bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                       border-top-color 0.2s ease;
 }
 
-.game-card-fields.open { display : block; padding-top : var(--space-sm); }
+.game-card-fields.open {
+    max-height       : 600px;
+    opacity          : 1;
+    padding-top      : var(--space-sm);
+    padding-bottom   : var(--space-md);
+    border-top-color : var(--border-subtle);
+}
 
 .field-row { display : flex; align-items : center; gap : var(--space-sm); margin-bottom : var(--space-sm); }
 
