@@ -1,0 +1,54 @@
+name: Version Bump
+
+on:
+  workflow_dispatch:
+    inputs:
+      type:
+        type: choice
+        description: "Semver bump type"
+        required: true
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+jobs:
+  bump:
+    name: Bump version, tag & push
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Bump version
+        id: bump
+        run: |
+          OUTPUT=$(node scripts/bump-version.js ${{ inputs.type }})
+          NEW_VERSION=$(echo "$OUTPUT" | tail -n 1)
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Bumped to v$NEW_VERSION"
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit, tag & push
+        run: |
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          git add manifest.json package.json
+          git commit -m "chore: bump version to v$VERSION"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin main
+          git push origin "v$VERSION"
+          echo "✓ Pushed v$VERSION — release.yml workflow will now build & publish"

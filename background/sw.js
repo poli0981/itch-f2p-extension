@@ -168,7 +168,7 @@ async function handleMessage (message, sender) {
                 const dup = await checkDuplicate (gameUrl);
                 return {ok: true, data: dup};
             }
-            catch (err) {
+            catch {
                 const queue = await loadQueue ();
                 const gameId = extractGameId (gameUrl);
                 const inQueue = queue.some ((g) => extractGameId (g.url) === gameId);

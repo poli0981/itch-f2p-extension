@@ -1,0 +1,49 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify tag matches manifest.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          MANIFEST_VERSION=$(node -p "JSON.parse(require('fs').readFileSync('manifest.json','utf8')).version")
+          if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match manifest version $MANIFEST_VERSION"
+            exit 1
+          fi
+          echo "✓ Tag v$TAG_VERSION matches manifest.json"
+
+      - name: Build detector & validate manifest
+        run: |
+          npm run validate:manifest
+          npm run build:detector
+
+      - name: Package extension
+        run: npm run package
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/itch-f2p-tracker-*.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: false

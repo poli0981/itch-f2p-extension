@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate manifest.json
+        run: npm run validate:manifest
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Build detector (NSFW keywords injection)
+        run: npm run build:detector
+
+      - name: Verify detector.js is in sync with shared/nsfw-keywords.js
+        run: |
+          if ! git diff --exit-code content/detector.js; then
+            echo ""
+            echo "::error::content/detector.js is out of sync with shared/nsfw-keywords.js"
+            echo "Run 'npm run build:detector' locally and commit the result."
+            exit 1
+          fi
+
+      - name: Test package build
+        run: npm run package
+
+      - name: Upload .zip artifact (CI preview)
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-zip
+          path: dist/*.zip
+          retention-days: 7

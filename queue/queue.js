@@ -14,7 +14,7 @@
  */
 
 import { MSG, EDITABLE_FIELDS, GENRE_PRESETS } from "../shared/constants.js";
-import { extractGameId, formatTime, truncate } from "../shared/utils.js";
+import { formatTime, truncate } from "../shared/utils.js";
 import { $, sendMessage, showToast } from "../shared/ui.js";
 
 const queueCountEl = $("#queueCount");
@@ -79,7 +79,6 @@ function renderQueue(queue, filter = "") {
 }
 
 function createCard(game) {
-    const gameId = extractGameId(game.url) || game.url;
     const card = document.createElement("div");
     card.className = "game-card";
     card.dataset.url = game.url;

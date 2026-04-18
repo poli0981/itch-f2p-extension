@@ -1,4 +1,12 @@
 .idea/
 .idea/.gitignore
+
 # Local Claude session data
 .claude/
+
+# Node.js tooling
+node_modules/
+
+# Build output
+dist/
+*.zip

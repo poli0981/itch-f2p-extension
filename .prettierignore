@@ -1,0 +1,30 @@
+lib/
+node_modules/
+dist/
+*.min.js
+*.min.mjs
+CHANGELOG.md
+LICENSE
+package-lock.json
+
+# Existing codebase uses a custom style (spaces before parens, aligned attrs)
+# that doesn't round-trip cleanly through Prettier. Keep legacy files ignored;
+# new files should follow Prettier output.
+manifest.json
+.github/
+docs/
+*.md
+background/
+content/
+popup/
+queue/
+settings/
+shared/constants.js
+shared/logger.js
+shared/nsfw-keywords.js
+shared/storage.js
+shared/theme.css
+shared/ui.js
+shared/utils.js
+eslint.config.js
+scripts/bump-version.js

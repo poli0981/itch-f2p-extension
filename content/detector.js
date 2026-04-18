@@ -56,15 +56,6 @@
     if (!isGamePage()) return;
 
     // ════════════════════════════════════════════════════════════
-    // DOM helpers
-    // ════════════════════════════════════════════════════════════
-
-    function textOf(sel) {
-        const el = document.querySelector(sel);
-        return el ? el.textContent.trim() : "";
-    }
-
-    // ════════════════════════════════════════════════════════════
     // 1. Title extraction
     // ════════════════════════════════════════════════════════════
 
@@ -251,53 +242,140 @@
     // ════════════════════════════════════════════════════════════
 
     /**
-     * Inlined NSFW keyword database (content script cannot import ES modules).
-     * Maintained in shared/nsfw-keywords.js — sync manually if updated.
+     * NSFW keyword database.
+     * Single source of truth: shared/nsfw-keywords.js
+     * Injected by scripts/build-detector.js (run: npm run build:detector)
+     *
+     * MV3 content scripts cannot use ES module imports, so the array
+     * is inlined by the build step between the markers below.
      */
+    // NSFW_KEYWORDS_START — auto-generated from shared/nsfw-keywords.js, do not edit manually
     const NSFW_KEYWORDS = [
-        // English
-        "adult", "nsfw", "erotic", "erotica", "hentai", "porn", "pornographic",
-        "mature", "sexual", "sexual content", "nudity", "nude", "naked",
-        "lewd", "ecchi", "bdsm", "fetish", "bondage", "s&m",
-        "furry", "yuri", "yaoi", "bara", "otome",
-        "sex", "intercourse", "orgasm", "masturbation",
-        "explicit", "xxx", "x-rated",
-        "stripshow", "striptease", "strip poker",
-        "ahegao", "tentacle", "tentacles",
-        "succubus", "incubus",
-        // Japanese
-        "\u30A8\u30ED", "\u30A8\u30C3\u30C1", "\u30D8\u30F3\u30BF\u30A4",
-        "\u304A\u3063\u3071\u3044", "\u88F8", "\u6210\u4EBA", "\u6027\u7684",
-        "\u5B98\u80FD", "\u767E\u5408", "\u3084\u304A\u3044",
-        // Chinese
-        "\u8272\u60C5", "\u88F8\u4F53", "\u88F8\u9AD4", "\u60C5\u8272",
-        "\u6027\u611F", "\u53D8\u6001", "\u8B8A\u614B", "\u7F8E\u5C11\u5973",
-        "\u5DE8\u4E73", "\u798F\u5229", "\u7981\u6B62\u672A\u6210\u5E74",
-        // Korean
-        "\uC131\uC778", "\uC57C\uD55C", "\uC5D0\uB85C", "\uB204\uB4DC",
-        "\uC139\uC2DC", "\uC131\uC801", "\uD5E8\uD0C0\uC774", "19\uAE08",
-        // Spanish / Portuguese
-        "adulto", "adulta", "er\u00F3tico", "er\u00F3tica",
-        "desnudo", "desnuda", "desnudez", "nudez",
-        "pornograf\u00EDa", "pornografia", "contenido adulto",
-        "conte\u00FAdo adulto", "solo adultos",
-        // French
-        "adulte", "\u00E9rotique", "nudit\u00E9", "sexuel", "sexuelle",
-        "pornographie", "pornographique", "contenu adulte",
-        // German
-        "erwachsene", "erotik", "erotisch", "nackt", "nacktheit",
-        "sexuell", "pornografie", "pornographisch", "ab 18",
-        // Russian
-        "\u0432\u0437\u0440\u043E\u0441\u043B\u044B\u0439", "\u044D\u0440\u043E\u0442\u0438\u043A\u0430",
-        "\u043F\u043E\u0440\u043D\u043E", "\u043E\u0431\u043D\u0430\u0436\u0451\u043D\u043D\u044B\u0439",
-        "\u0441\u0435\u043A\u0441", "\u0445\u0435\u043D\u0442\u0430\u0439",
-        // Vietnamese
-        "ng\u01B0\u1EDDi l\u1EDBn", "khi\u00EAu d\u00E2m", "kh\u1ECFa th\u00E2n",
-        "g\u1EE3i c\u1EA3m", "t\u00ECnh d\u1EE5c",
-        // Symbols / shorthand
-        "18+", "18 +", "r-18", "r18", "21+",
-        "n.s.f.w", "x-rated", "x rated",
+        "adult",
+        "nsfw",
+        "erotic",
+        "erotica",
+        "hentai",
+        "porn",
+        "pornographic",
+        "mature",
+        "sexual",
+        "sexual content",
+        "nudity",
+        "nude",
+        "naked",
+        "lewd",
+        "ecchi",
+        "bdsm",
+        "fetish",
+        "bondage",
+        "s&m",
+        "furry",
+        "yuri",
+        "yaoi",
+        "bara",
+        "otome",
+        "sex",
+        "intercourse",
+        "orgasm",
+        "masturbation",
+        "explicit",
+        "xxx",
+        "x-rated",
+        "stripshow",
+        "striptease",
+        "strip poker",
+        "ahegao",
+        "tentacle",
+        "tentacles",
+        "succubus",
+        "incubus",
+        "dating sim",
+        "dating simulator",
+        "エロ",
+        "エッチ",
+        "ヘンタイ",
+        "おっぱい",
+        "裸",
+        "成人",
+        "性的",
+        "官能",
+        "百合",
+        "やおい",
+        "r-18",
+        "r18",
+        "色情",
+        "裸体",
+        "裸體",
+        "情色",
+        "性感",
+        "变态",
+        "變態",
+        "美少女",
+        "巨乳",
+        "福利",
+        "禁止未成年",
+        "성인",
+        "야한",
+        "에로",
+        "누드",
+        "섹시",
+        "성적",
+        "헨타이",
+        "19금",
+        "adulto",
+        "adulta",
+        "erótico",
+        "erótica",
+        "desnudo",
+        "desnuda",
+        "desnudez",
+        "sexo",
+        "pornografía",
+        "contenido adulto",
+        "solo adultos",
+        "nudez",
+        "nu",
+        "nua",
+        "pornografia",
+        "conteúdo adulto",
+        "adulte",
+        "érotique",
+        "nue",
+        "nudité",
+        "sexuel",
+        "sexuelle",
+        "sexe",
+        "pornographie",
+        "pornographique",
+        "contenu adulte",
+        "erwachsene",
+        "erotik",
+        "erotisch",
+        "nackt",
+        "nacktheit",
+        "sexuell",
+        "pornografie",
+        "pornographisch",
+        "ab 18",
+        "взрослый",
+        "эротика",
+        "порно",
+        "обнажённый",
+        "секс",
+        "хентай",
+        "18+",
+        "người lớn",
+        "khiêu dâm",
+        "khỏa thân",
+        "gợi cảm",
+        "tình dục",
+        "18 +",
+        "21+",
+        "n.s.f.w",
+        "x rated",
     ];
+    // NSFW_KEYWORDS_END
 
     /**
      * Detect NSFW status from tags, description, and page elements.
