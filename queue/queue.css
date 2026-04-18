@@ -42,10 +42,18 @@ body { background : var(--bg-tertiary); }
 .game-card {
     background    : var(--bg-card); border : 1px solid var(--border-subtle);
     border-radius : var(--radius); overflow : hidden;
-    transition    : all var(--transition);
+    box-shadow    : var(--shadow-sm);
+    transition    : border-color var(--transition-fast),
+                    box-shadow var(--transition),
+                    transform var(--transition);
+    will-change   : transform;
 }
 
-.game-card:hover { border-color : var(--border); box-shadow : var(--shadow-sm); }
+.game-card:hover {
+    border-color : var(--border-strong);
+    box-shadow   : var(--shadow-card-hover);
+    transform    : translateY(-2px);
+}
 
 .game-card-header { position : relative; }
 
@@ -163,12 +171,22 @@ body { background : var(--bg-tertiary); }
 
 /* ── Bulk selection ── */
 .bulk-toolbar {
-    display         : flex; align-items : center; gap : var(--space-sm);
-    background      : var(--bg-card); border : 1px solid var(--border);
-    border-radius   : var(--radius); padding : var(--space-sm) var(--space-md);
-    margin-bottom   : var(--space-md);
-    position        : sticky; top : var(--space-sm); z-index : 5;
-    box-shadow      : var(--shadow-sm);
+    display                 : flex; align-items : center; gap : var(--space-sm);
+    background              : var(--bg-card-alpha);
+    backdrop-filter         : saturate(1.4) blur(14px);
+    -webkit-backdrop-filter : saturate(1.4) blur(14px);
+    border                  : 1px solid var(--border-strong);
+    border-radius           : var(--radius);
+    padding                 : var(--space-sm) var(--space-md);
+    margin-bottom           : var(--space-md);
+    position                : sticky; top : var(--space-sm); z-index : 5;
+    box-shadow              : var(--shadow-md);
+    animation               : bulk-toolbar-in 0.2s ease forwards;
+}
+
+@keyframes bulk-toolbar-in {
+    from { opacity : 0; transform : translateY(-4px); }
+    to { opacity : 1; transform : translateY(0); }
 }
 
 .bulk-count { font-size : var(--font-sm); color : var(--text-secondary); }
