@@ -329,7 +329,15 @@ async function executeFullObjectPush (entries, settings, signed) {
     }
     await invalidatePath (REPO_INDEX_PATH);
 
-    return {ok: true, commitSha, signed, targetPath: REPO_INDEX_PATH};
+    // Detailed per-file breakdown so the UI can show progress feedback
+    // (e.g. "Pushed 8 games to 2 files: game_info_003.json +5, game_info_004.json +3")
+    const files = fileOps.map ((op) => ({
+        name: op.path.split ("/").pop (),
+        added: op.entries.length,
+        isNew: op.isNew,
+    }));
+
+    return {ok: true, commitSha, signed, targetPath: REPO_INDEX_PATH, files};
 }
 
 // ════════════════════════════════════════════════════════════
@@ -515,6 +523,7 @@ export async function pushQueue (opts = {}) {
                     remaining: toKeep.length,
                     signed: !!result.signed,
                     target: targetLabel,
+                    files: result.files || [],
                 };
             }
         }

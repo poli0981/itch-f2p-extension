@@ -9,7 +9,10 @@
 
 import {DEFAULT_SETTINGS, MSG, QUEUE_MAX} from "../shared/constants.js";
 import {formatTime, makeQueueEntry} from "../shared/utils.js";
-import {$, sendMessage, showToast} from "../shared/ui.js";
+import {$, sendMessage, showToast, initTheme, getThemeMode, setThemeMode} from "../shared/ui.js";
+
+// Apply theme as early as possible to avoid flash
+initTheme ();
 
 const FIELD_IDS = [
     "github_owner", "github_repo", "github_branch", "github_token",
@@ -520,10 +523,27 @@ function bindEvents () {
     // Stats refresh
     $ ("#refreshStatsBtn")
         .addEventListener ("click", refreshStats);
+
+    // Theme picker
+    for (const radio of document.querySelectorAll ("input[name='theme_mode']")) {
+        radio.addEventListener ("change", async (e) => {
+            if (e.target.checked) {
+                await setThemeMode (e.target.value);
+                showToast (`Theme: ${e.target.value}`, "info", 1500);
+            }
+        });
+    }
+}
+
+async function syncThemePicker () {
+    const mode = await getThemeMode ();
+    const radio = document.querySelector (`input[name='theme_mode'][value='${mode}']`);
+    if (radio) radio.checked = true;
 }
 
 async function init () {
     await loadSettingsIntoForm ();
+    await syncThemePicker ();
     bindEvents ();
     refreshStats ();
     document.querySelectorAll (".settings-section")

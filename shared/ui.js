@@ -105,6 +105,319 @@ export function showActionToast (text, action, type = "info", duration = 5000) {
     setTimeout (dismiss, duration);
 }
 
+// ════════════════════════════════════════════════════════════
+// Combobox — text input + filtered dropdown with keyboard nav
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Create a combobox widget: text input + grouped dropdown with fuzzy filtering,
+ * keyboard navigation (ArrowUp/Down/Enter/Escape), free-text acceptance, and
+ * click-outside dismissal.
+ *
+ * @param {object} opts
+ * @param {string} [opts.value=""]              - Initial value
+ * @param {string} [opts.placeholder]           - Input placeholder
+ * @param {Array<{label: string, items: string[]}>} opts.groups - Option groups
+ * @param {boolean} [opts.allowFreeText=true]   - Commit arbitrary typed value
+ * @param {(v: string) => void} opts.onCommit   - Called when value is committed
+ *                                                (select/Enter/blur-with-change)
+ * @returns {{root: HTMLElement, input: HTMLInputElement, setValue: (v: string) => void}}
+ */
+export function createCombobox (opts) {
+    const {
+        value = "",
+        placeholder = "",
+        groups = [],
+        allowFreeText = true,
+        onCommit = () => {},
+    } = opts;
+
+    const root = document.createElement ("div");
+    root.className = "combobox";
+
+    const input = document.createElement ("input");
+    input.type = "text";
+    input.className = "input combobox-input";
+    input.placeholder = placeholder;
+    input.value = value;
+    input.autocomplete = "off";
+    input.setAttribute ("role", "combobox");
+    input.setAttribute ("aria-autocomplete", "list");
+    input.setAttribute ("aria-expanded", "false");
+
+    const list = document.createElement ("div");
+    list.className = "combobox-list";
+    list.setAttribute ("role", "listbox");
+    list.hidden = true;
+
+    root.append (input, list);
+
+    let activeIdx = -1;
+    let currentItems = [];   // Flat list of {label, value, groupLabel}
+    let lastCommitted = value;
+
+    // ── Render dropdown, applying filter ──
+    function render (filter = "") {
+        list.innerHTML = "";
+        currentItems = [];
+        const f = filter.trim ().toLowerCase ();
+
+        let anyVisible = false;
+        for (const group of groups) {
+            const matches = f
+                            ? group.items.filter ((it) => it.toLowerCase ().includes (f))
+                            : group.items;
+            if (matches.length === 0) continue;
+
+            anyVisible = true;
+            if (group.label) {
+                const header = document.createElement ("div");
+                header.className = "combobox-group-label";
+                header.textContent = group.label;
+                list.appendChild (header);
+            }
+
+            for (const item of matches) {
+                const optionEl = document.createElement ("div");
+                optionEl.className = "combobox-option";
+                optionEl.setAttribute ("role", "option");
+                optionEl.textContent = item;
+                const idx = currentItems.length;
+                optionEl.dataset.idx = String (idx);
+                optionEl.addEventListener ("mousedown", (e) => {
+                    e.preventDefault ();     // prevent input blur before click fires
+                    commit (item);
+                    close ();
+                });
+                optionEl.addEventListener ("mouseenter", () => setActive (idx));
+                list.appendChild (optionEl);
+                currentItems.push ({label: item, value: item, groupLabel: group.label});
+            }
+        }
+
+        if (!anyVisible) {
+            const empty = document.createElement ("div");
+            empty.className = "combobox-empty";
+            empty.textContent = f ? `No match for "${filter}"` : "No options";
+            list.appendChild (empty);
+        }
+
+        activeIdx = currentItems.length > 0 ? 0 : -1;
+        paintActive ();
+    }
+
+    function setActive (idx) {
+        if (idx < 0 || idx >= currentItems.length) return;
+        activeIdx = idx;
+        paintActive ();
+    }
+
+    function paintActive () {
+        for (const el of list.querySelectorAll (".combobox-option")) {
+            const i = parseInt (el.dataset.idx, 10);
+            el.classList.toggle ("active", i === activeIdx);
+        }
+        // Scroll active into view
+        if (activeIdx >= 0) {
+            const active = list.querySelector (`.combobox-option[data-idx="${activeIdx}"]`);
+            if (active) active.scrollIntoView ({block: "nearest"});
+        }
+    }
+
+    function open () {
+        list.hidden = false;
+        input.setAttribute ("aria-expanded", "true");
+        render (input.value);
+    }
+
+    function close () {
+        list.hidden = true;
+        input.setAttribute ("aria-expanded", "false");
+        activeIdx = -1;
+    }
+
+    function commit (v) {
+        const trimmed = (
+            v ?? ""
+        ).trim ();
+        if (trimmed === lastCommitted) return;
+        lastCommitted = trimmed;
+        input.value = trimmed;
+        onCommit (trimmed);
+    }
+
+    // ── Events ──
+    input.addEventListener ("focus", open);
+
+    input.addEventListener ("input", () => {
+        if (list.hidden) open ();
+        else render (input.value);
+    });
+
+    input.addEventListener ("keydown", (e) => {
+        if (e.key === "ArrowDown") {
+            e.preventDefault ();
+            if (list.hidden) open ();
+            else setActive (Math.min (activeIdx + 1, currentItems.length - 1));
+        }
+        else if (e.key === "ArrowUp") {
+            e.preventDefault ();
+            if (list.hidden) open ();
+            else setActive (Math.max (activeIdx - 1, 0));
+        }
+        else if (e.key === "Enter") {
+            e.preventDefault ();
+            if (!list.hidden && activeIdx >= 0) {
+                commit (currentItems[activeIdx].value);
+            }
+            else if (allowFreeText) {
+                commit (input.value);
+            }
+            close ();
+        }
+        else if (e.key === "Escape") {
+            e.preventDefault ();
+            input.value = lastCommitted;
+            close ();
+        }
+        else if (e.key === "Tab") {
+            close ();  // don't preventDefault — allow tab to move focus
+        }
+    });
+
+    input.addEventListener ("blur", () => {
+        // Defer close so mousedown on option can fire first
+        setTimeout (() => {
+            if (!list.hidden) close ();
+            // Commit free text on blur if changed
+            if (allowFreeText && input.value.trim () !== lastCommitted) {
+                commit (input.value);
+            }
+        }, 120);
+    });
+
+    // Click outside closes
+    document.addEventListener ("mousedown", (e) => {
+        if (!root.contains (e.target) && !list.hidden) close ();
+    });
+
+    return {
+        root,
+        input,
+        setValue (v) {
+            input.value = v || "";
+            lastCommitted = (
+                v || ""
+            ).trim ();
+        },
+    };
+}
+
+// ════════════════════════════════════════════════════════════
+// Theme handling
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Supported theme modes.
+ * - "dark" / "light": explicit user choice (persisted)
+ * - "system": follow prefers-color-scheme (default)
+ */
+export const THEME_MODES = ["system", "dark", "light"];
+const THEME_STORAGE_KEY = "ui:theme";
+
+/**
+ * Resolve the effective theme (dark | light) from a mode.
+ * @param {"system"|"dark"|"light"} mode
+ * @returns {"dark"|"light"}
+ */
+function resolveTheme (mode) {
+    if (mode === "dark" || mode === "light") return mode;
+    try {
+        return window.matchMedia && window.matchMedia ("(prefers-color-scheme: light)").matches
+               ? "light"
+               : "dark";
+    }
+    catch {
+        return "dark";
+    }
+}
+
+/**
+ * Apply theme to <html> via data-theme attribute.
+ * Removes attribute for dark (implicit default) to keep DOM lean.
+ * @param {"dark"|"light"} theme
+ */
+function applyThemeAttribute (theme) {
+    if (theme === "light") document.documentElement.setAttribute ("data-theme", "light");
+    else document.documentElement.removeAttribute ("data-theme");
+}
+
+/**
+ * Load stored theme mode and apply it to the page.
+ * Also subscribes to storage changes and system preference changes.
+ * Call once at page init (popup/queue/settings).
+ * @returns {Promise<"system"|"dark"|"light">} The active mode
+ */
+export async function initTheme () {
+    let mode = "system";
+    try {
+        const stored = await chrome.storage.local.get (THEME_STORAGE_KEY);
+        if (stored[THEME_STORAGE_KEY] && THEME_MODES.includes (stored[THEME_STORAGE_KEY])) {
+            mode = stored[THEME_STORAGE_KEY];
+        }
+    }
+    catch {
+        // ignore — default to system
+    }
+
+    applyThemeAttribute (resolveTheme (mode));
+
+    // React to external theme changes (e.g. from the settings page)
+    chrome.storage.onChanged.addListener ((changes, area) => {
+        if (area !== "local" || !changes[THEME_STORAGE_KEY]) return;
+        const newMode = changes[THEME_STORAGE_KEY].newValue || "system";
+        applyThemeAttribute (resolveTheme (newMode));
+    });
+
+    // React to system preference changes when in "system" mode
+    try {
+        const mq = window.matchMedia ("(prefers-color-scheme: light)");
+        mq.addEventListener ("change", async () => {
+            const stored = await chrome.storage.local.get (THEME_STORAGE_KEY);
+            const currentMode = stored[THEME_STORAGE_KEY] || "system";
+            if (currentMode === "system") applyThemeAttribute (resolveTheme ("system"));
+        });
+    }
+    catch {
+        // matchMedia listener unavailable — OK
+    }
+
+    return mode;
+}
+
+/**
+ * Persist a new theme mode. Applied automatically via onChanged listener.
+ * @param {"system"|"dark"|"light"} mode
+ */
+export async function setThemeMode (mode) {
+    if (!THEME_MODES.includes (mode)) mode = "system";
+    await chrome.storage.local.set ({[THEME_STORAGE_KEY]: mode});
+}
+
+/**
+ * Read current stored theme mode (for settings UI initial state).
+ * @returns {Promise<"system"|"dark"|"light">}
+ */
+export async function getThemeMode () {
+    try {
+        const stored = await chrome.storage.local.get (THEME_STORAGE_KEY);
+        return stored[THEME_STORAGE_KEY] || "system";
+    }
+    catch {
+        return "system";
+    }
+}
+
 /**
  * Open a bundled extension page in a tab, reusing the existing tab if already open.
  *

@@ -16,7 +16,7 @@ import {MSG} from "../shared/constants.js";
 import {invalidateSettingsCache, loadQueue, loadSettings, saveSettings, storageClearAll} from "../shared/storage.js";
 import {clearLogs, exportLogsJSON, getLogs, logError, logInfo, logWarn} from "../shared/logger.js";
 import {extractGameId} from "../shared/utils.js";
-import {addToQueue, getQueueSize, removeFromQueue, updateEntry} from "./queue-manager.js";
+import {addToQueue, getQueueSize, removeFromQueue, reorderQueue, updateEntry} from "./queue-manager.js";
 import {checkDuplicate, clearDedupCache, refreshDedupCache} from "./dedup-checker.js";
 import {pushQueue, pushQueueUnsigned} from "./push-handler.js";
 import {clearCache as clearGitHubCache} from "./github-api.js";
@@ -115,6 +115,10 @@ async function handleMessage (message, sender) {
 
         case MSG.UPDATE_ENTRY: {
             return await updateEntry (data?.url, data?.fields);
+        }
+
+        case MSG.REORDER_QUEUE: {
+            return await reorderQueue (data?.orderedUrls);
         }
 
         case MSG.GET_QUEUE: {

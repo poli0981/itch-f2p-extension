@@ -262,3 +262,39 @@ body { background : var(--bg-tertiary); }
 
 /* When NSFW badge is present, shift checkbox slightly right to avoid overlap */
 .game-card.has-nsfw .game-card-select { left : 52px; }
+
+/* ── Drag & drop reordering ── */
+.game-card-drag-handle {
+    position    : absolute; top : var(--space-xs); right : 36px;
+    width       : 24px; height : 24px;
+    display     : inline-flex; align-items : center; justify-content : center;
+    background  : rgba(0, 0, 0, 0.6);
+    color       : var(--text-secondary);
+    border-radius : var(--radius-sm);
+    cursor      : grab;
+    opacity     : 0;
+    transition  : opacity var(--transition-fast), color var(--transition-fast);
+    z-index     : 2;
+}
+
+.game-card:hover .game-card-drag-handle { opacity : 1; }
+
+.game-card-drag-handle:hover { color : var(--text-primary); }
+
+.game-card-drag-handle:active { cursor : grabbing; }
+
+.game-card.dragging {
+    opacity    : 0.45;
+    transform  : scale(0.98);
+    cursor     : grabbing;
+}
+
+.game-card.drop-before { box-shadow : -3px 0 0 0 var(--accent), var(--shadow-card-hover); }
+
+.game-card.drop-after  { box-shadow :  3px 0 0 0 var(--accent), var(--shadow-card-hover); }
+
+/* For grids with row wraps, also show top/bottom indicators on narrow viewports */
+@media (max-width: 640px) {
+    .game-card.drop-before { box-shadow : 0 -3px 0 0 var(--accent), var(--shadow-card-hover); }
+    .game-card.drop-after  { box-shadow : 0  3px 0 0 var(--accent), var(--shadow-card-hover); }
+}

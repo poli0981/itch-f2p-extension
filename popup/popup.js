@@ -14,7 +14,11 @@
 
 import { MSG, QUEUE_MAX } from "../shared/constants.js";
 import { truncate } from "../shared/utils.js";
-import { $, sendMessage, showToast, openOrFocusTab } from "../shared/ui.js";
+import { $, sendMessage, showToast, openOrFocusTab, initTheme } from "../shared/ui.js";
+import { icon } from "../shared/icons.js";
+
+// Apply theme as early as possible to avoid flash of wrong theme
+initTheme();
 
 const versionEl        = $("#version");
 const statusDot        = $("#statusDot");
@@ -35,6 +39,21 @@ const openQueueBtn     = $("#openQueueBtn");
 const openSettingsBtn  = $("#openSettingsBtn");
 const activityList     = $("#activityList");
 const rescanBtn        = $("#rescanBtn");
+
+/**
+ * Format the target segment of a push-success toast.
+ * Shows per-file breakdown when the push spanned multiple data files.
+ */
+function formatPushTarget(resp) {
+    if (Array.isArray(resp.files) && resp.files.length > 1) {
+        const parts = resp.files.map((f) => `${f.name}${f.isNew ? " (new)" : ""} +${f.added}`);
+        return ` → ${resp.files.length} files: ${parts.join(", ")}`;
+    }
+    if (Array.isArray(resp.files) && resp.files.length === 1) {
+        return ` → ${resp.files[0].name}${resp.files[0].isNew ? " (new)" : ""}`;
+    }
+    return resp.target ? ` → ${resp.target}` : "";
+}
 
 // ── Init ──
 
@@ -239,7 +258,7 @@ function showDetectedGame(game, dupData = {}) {
     } else {
         detectedDuplicate.style.display = "none";
         addBtn.disabled = false;
-        addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add to Queue`;
+        addBtn.innerHTML = `${icon("plus", { strokeWidth: 2.5 })} Add to Queue`;
 
         if (dupData.warning) {
             appendBadge(detectedBadges, "Local check only", "warning");
@@ -333,7 +352,7 @@ function bindEvents() {
             await loadActivity();
         } else {
             addBtn.disabled = false;
-            addBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add to Queue`;
+            addBtn.innerHTML = `${icon("plus", { strokeWidth: 2.5 })} Add to Queue`;
             showToast(addResp?.error || "Failed to add", "error");
         }
     });
@@ -347,8 +366,8 @@ function bindEvents() {
 
         if (resp?.ok) {
             const label = resp.signed ? " (signed)" : "";
-            const target = resp.target ? ` → ${resp.target}` : "";
-            showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success");
+            const target = formatPushTarget(resp);
+            showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success", 3200);
             updateQueueUI(resp.remaining || 0);
             await loadActivity();
         } else if (resp?.gpgFailed) {

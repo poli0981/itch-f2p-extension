@@ -15,7 +15,11 @@
 
 import { MSG, EDITABLE_FIELDS, GENRE_PRESETS } from "../shared/constants.js";
 import { formatTime, truncate } from "../shared/utils.js";
-import { $, sendMessage, showToast, showActionToast } from "../shared/ui.js";
+import { $, sendMessage, showToast, showActionToast, initTheme, createCombobox } from "../shared/ui.js";
+import { icon } from "../shared/icons.js";
+
+// Apply theme as early as possible to avoid flash
+initTheme();
 
 const queueCountEl = $("#queueCount");
 const queueGrid    = $("#queueGrid");
@@ -39,6 +43,21 @@ let currentQueue = [];
 let filteredUrls = [];  // URLs currently visible after search filter (preserves order)
 const selection = new Set();  // Selected URLs
 let lastAnchorUrl = null;  // Last checkbox toggled, for Shift+click range select
+
+/**
+ * Format the target segment of a push-success toast.
+ * Shows per-file breakdown when the push spanned multiple data files.
+ */
+function formatPushTarget(resp) {
+    if (Array.isArray(resp.files) && resp.files.length > 1) {
+        const parts = resp.files.map((f) => `${f.name}${f.isNew ? " (new)" : ""} +${f.added}`);
+        return ` \u2192 ${resp.files.length} files: ${parts.join(", ")}`;
+    }
+    if (Array.isArray(resp.files) && resp.files.length === 1) {
+        return ` \u2192 ${resp.files[0].name}${resp.files[0].isNew ? " (new)" : ""}`;
+    }
+    return resp.target ? ` \u2192 ${resp.target}` : "";
+}
 
 // ── Render ──
 
@@ -105,7 +124,15 @@ function createCard(game) {
     const card = document.createElement("div");
     card.className = "game-card";
     card.dataset.url = game.url;
+    card.draggable = true;
     if (selection.has(game.url)) card.classList.add("selected");
+
+    // Drag & drop for manual reordering
+    card.addEventListener("dragstart", handleDragStart);
+    card.addEventListener("dragover", handleDragOver);
+    card.addEventListener("dragleave", handleDragLeave);
+    card.addEventListener("drop", handleDrop);
+    card.addEventListener("dragend", handleDragEnd);
 
     // ── Header with thumbnail ──
     const header = document.createElement("div");
@@ -127,6 +154,15 @@ function createCard(game) {
         card.classList.add("has-nsfw");
     }
 
+    // Drag handle (visible on hover)
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "game-card-drag-handle";
+    dragHandle.title = "Drag to reorder";
+    dragHandle.innerHTML = icon("grip-vertical", { size: 16, strokeWidth: 2 });
+    dragHandle.addEventListener("mousedown", () => { card.classList.add("drag-ready"); });
+    dragHandle.addEventListener("mouseup", () => { card.classList.remove("drag-ready"); });
+    header.appendChild(dragHandle);
+
     // Bulk-select checkbox
     const selectBox = document.createElement("input");
     selectBox.type = "checkbox";
@@ -147,7 +183,7 @@ function createCard(game) {
     const removeBtn = document.createElement("button");
     removeBtn.className = "game-card-remove";
     removeBtn.title = "Remove from queue";
-    removeBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    removeBtn.innerHTML = icon("x", { strokeWidth: 2.5 });
     removeBtn.addEventListener("click", () => handleRemove(game.url, game.name));
 
     header.append(thumb, removeBtn);
@@ -316,85 +352,36 @@ function createGenreField(game) {
     const inputWrap = document.createElement("div");
     inputWrap.className = "field-input genre-select-wrap";
 
-    // Build options from detected tags (now an array) + presets
+    // Build option groups from detected tags + presets (deduplicated)
     const detectedTags = Array.isArray(game.tags) ? game.tags : [];
-    const allOptions = buildGenreOptions(detectedTags, game.genre);
+    const seenLower = new Set();
+    const dedupedDetected = [];
+    for (const t of detectedTags) {
+        const k = t.toLowerCase();
+        if (!seenLower.has(k)) { seenLower.add(k); dedupedDetected.push(t); }
+    }
+    const unseenPresets = GENRE_PRESETS.filter((p) => !seenLower.has(p.toLowerCase()));
 
-    const select = document.createElement("select");
-    select.className = "select genre-select";
-
-    for (const opt of allOptions) {
-        const option = document.createElement("option");
-        option.value = opt.value;
-        option.textContent = opt.label;
-        if (opt.selected) option.selected = true;
-        if (opt.disabled) option.disabled = true;
-        if (opt.className) option.className = opt.className;
-        select.appendChild(option);
+    const groups = [];
+    if (dedupedDetected.length > 0) {
+        groups.push({ label: "From this game", items: dedupedDetected });
+    }
+    if (unseenPresets.length > 0) {
+        groups.push({ label: "Common genres", items: unseenPresets });
     }
 
-    const customInput = document.createElement("input");
-    customInput.type = "text";
-    customInput.className = "input genre-custom-input";
-    customInput.placeholder = "Type custom genre...";
-    customInput.style.display = "none";
-
-    const isCustom = game.genre && game.genre !== "N/A" &&
-        !detectedTags.includes(game.genre) && !GENRE_PRESETS.includes(game.genre);
-    if (isCustom) {
-        select.value = "__other__";
-        customInput.style.display = "block";
-        customInput.value = game.genre;
-    }
-
-    select.addEventListener("change", () => {
-        if (select.value === "__other__") {
-            customInput.style.display = "block";
-            customInput.focus();
-        } else {
-            customInput.style.display = "none";
-            customInput.value = "";
-            handleFieldUpdate(game.url, "genre", select.value);
-        }
+    const combo = createCombobox({
+        value: game.genre && game.genre !== "N/A" ? game.genre : "",
+        placeholder: "Select or type genre...",
+        groups,
+        allowFreeText: true,
+        onCommit: (v) => handleFieldUpdate(game.url, "genre", v),
     });
+    combo.root.classList.add("genre-combo");
 
-    customInput.addEventListener("change", () => {
-        const val = customInput.value.trim();
-        if (val) handleFieldUpdate(game.url, "genre", val);
-    });
-
-    inputWrap.append(select, customInput);
+    inputWrap.appendChild(combo.root);
     row.append(label, inputWrap);
     return row;
-}
-
-function buildGenreOptions(detectedTags, currentGenre) {
-    const options = [];
-    const seen = new Set();
-
-    options.push({ value: "", label: "\u2014 Select genre \u2014", disabled: true, selected: !currentGenre });
-
-    if (detectedTags.length > 0) {
-        options.push({ value: "", label: "\u2500\u2500 From this game \u2500\u2500", disabled: true, className: "optgroup-label" });
-        for (const tag of detectedTags) {
-            if (seen.has(tag.toLowerCase())) continue;
-            seen.add(tag.toLowerCase());
-            options.push({ value: tag, label: tag, selected: currentGenre === tag });
-        }
-    }
-
-    const unseen = GENRE_PRESETS.filter((p) => !seen.has(p.toLowerCase()));
-    if (unseen.length > 0) {
-        options.push({ value: "", label: "\u2500\u2500 Common genres \u2500\u2500", disabled: true, className: "optgroup-label" });
-        for (const preset of unseen) {
-            options.push({ value: preset, label: preset, selected: currentGenre === preset });
-        }
-    }
-
-    options.push({ value: "", label: "\u2500\u2500\u2500\u2500\u2500\u2500", disabled: true });
-    options.push({ value: "__other__", label: "Other (type custom)..." });
-
-    return options;
 }
 
 // ── Helpers ──
@@ -417,6 +404,88 @@ function makeMetaTag(text) {
     const span = document.createElement("span");
     span.textContent = text;
     return span;
+}
+
+// ── Drag & drop reordering ──
+
+let dragSourceUrl = null;
+
+function handleDragStart(e) {
+    const card = e.currentTarget;
+    dragSourceUrl = card.dataset.url;
+    card.classList.add("dragging");
+    if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text/plain", dragSourceUrl); } catch {}
+    }
+}
+
+function handleDragOver(e) {
+    if (!dragSourceUrl) return;
+    e.preventDefault();
+    const card = e.currentTarget;
+    if (card.dataset.url === dragSourceUrl) return;
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+
+    // Visual drop indicator (before/after based on mouse position)
+    const rect = card.getBoundingClientRect();
+    const midpoint = rect.top + rect.height / 2;
+    const isBefore = e.clientY < midpoint;
+    card.classList.toggle("drop-before", isBefore);
+    card.classList.toggle("drop-after", !isBefore);
+}
+
+function handleDragLeave(e) {
+    const card = e.currentTarget;
+    card.classList.remove("drop-before", "drop-after");
+}
+
+async function handleDrop(e) {
+    e.preventDefault();
+    if (!dragSourceUrl) return;
+
+    const targetCard = e.currentTarget;
+    const targetUrl = targetCard.dataset.url;
+    const rect = targetCard.getBoundingClientRect();
+    const isBefore = e.clientY < rect.top + rect.height / 2;
+
+    targetCard.classList.remove("drop-before", "drop-after");
+
+    if (targetUrl === dragSourceUrl) return;
+
+    // Compute new order from current DOM state, moving source relative to target
+    const currentOrder = [...queueGrid.querySelectorAll(".game-card")].map((c) => c.dataset.url);
+    const srcIdx = currentOrder.indexOf(dragSourceUrl);
+    if (srcIdx >= 0) currentOrder.splice(srcIdx, 1);
+    let tgtIdx = currentOrder.indexOf(targetUrl);
+    if (tgtIdx < 0) tgtIdx = currentOrder.length;
+    if (!isBefore) tgtIdx++;
+    currentOrder.splice(tgtIdx, 0, dragSourceUrl);
+
+    // Merge with full queue (filtered view might only show a subset)
+    const filteredSet = new Set(currentOrder);
+    const fullOrder = [];
+    // First pass: add all reordered filtered items in their new order
+    fullOrder.push(...currentOrder);
+    // Second pass: append any queue entries NOT in the filtered view, preserving original order
+    for (const entry of currentQueue) {
+        if (!filteredSet.has(entry.url)) fullOrder.push(entry.url);
+    }
+
+    const resp = await sendMessage(MSG.REORDER_QUEUE, { orderedUrls: fullOrder });
+    if (!resp?.ok) {
+        showToast(resp?.error || "Reorder failed", "error");
+    }
+    // Storage.onChanged listener will re-render
+}
+
+function handleDragEnd(e) {
+    e.currentTarget.classList.remove("dragging", "drag-ready");
+    // Clear any lingering drop indicators
+    for (const c of queueGrid.querySelectorAll(".drop-before, .drop-after")) {
+        c.classList.remove("drop-before", "drop-after");
+    }
+    dragSourceUrl = null;
 }
 
 // ── Bulk selection ──
@@ -493,8 +562,8 @@ async function handleBulkPush() {
 
     if (resp?.ok) {
         const label = resp.signed ? " (GPG signed)" : "";
-        const target = resp.target ? ` \u2192 ${resp.target}` : "";
-        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success");
+        const target = formatPushTarget(resp);
+        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success", 3200);
         selection.clear();
         await loadQueue();
     } else if (resp?.gpgFailed) {
@@ -604,8 +673,8 @@ pushAllBtn.addEventListener("click", async () => {
 
     if (resp?.ok) {
         const label = resp.signed ? " (GPG signed)" : "";
-        const target = resp.target ? ` \u2192 ${resp.target}` : "";
-        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success");
+        const target = formatPushTarget(resp);
+        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success", 3200);
         await loadQueue();
     } else if (resp?.gpgFailed) {
         const fallback = confirm(`GPG signing failed: ${resp.error}\n\nPush unsigned instead?`);
@@ -624,7 +693,7 @@ pushAllBtn.addEventListener("click", async () => {
     }
 
     pushAllBtn.disabled = false;
-    pushAllBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg> Push All`;
+    pushAllBtn.innerHTML = `${icon("arrow-up", { strokeWidth: 2.5 })} Push All`;
 });
 
 clearAllBtn.addEventListener("click", async () => {
@@ -642,7 +711,7 @@ clearAllBtn.addEventListener("click", async () => {
     await loadQueue();
 
     clearAllBtn.disabled = false;
-    clearAllBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg> Clear`;
+    clearAllBtn.innerHTML = `${icon("trash")} Clear`;
 });
 
 // ── Bulk toolbar button bindings ──
