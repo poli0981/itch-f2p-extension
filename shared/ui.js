@@ -108,24 +108,57 @@ export function showActionToast (text, action, type = "info", duration = 5000) {
 /**
  * Open a bundled extension page in a tab, reusing the existing tab if already open.
  *
+ * Uses chrome.runtime.getContexts (MV3, Chrome 116+) to discover tabs across all
+ * windows without requiring the "tabs" permission. getContexts returns only
+ * contexts owned by this extension, so it's safe and privacy-preserving.
+ *
+ * Previously used chrome.tabs.query({url}) which silently fails on inactive tabs
+ * without the "tabs" permission — meaning it only found the queue/settings tab
+ * when it happened to be the currently active tab.
+ *
  * @param {string} relativeUrl - Path relative to extension root (e.g. "queue/queue.html")
- * @returns {Promise<chrome.tabs.Tab>}
+ * @returns {Promise<{tabId: number, windowId: number}|chrome.tabs.Tab>}
  */
 export async function openOrFocusTab (relativeUrl) {
     const fullUrl = chrome.runtime.getURL (relativeUrl);
-    const tabs = await chrome.tabs.query ({url: fullUrl});
-    if (tabs.length > 0) {
-        const tab = tabs[0];
-        await chrome.tabs.update (tab.id, {active: true});
-        if (typeof tab.windowId === "number") {
-            try {
-                await chrome.windows.update (tab.windowId, {focused: true});
-            }
-            catch {
-                // windows API may be unavailable in some contexts — not critical
+
+    // Preferred path: find existing extension tab via runtime.getContexts
+    if (typeof chrome.runtime.getContexts === "function") {
+        try {
+            const contexts = await chrome.runtime.getContexts ({
+                contextTypes: ["TAB"],
+                documentUrls: [fullUrl],
+            });
+            if (contexts.length > 0) {
+                // Prefer a tab in the currently focused window if we can identify one;
+                // otherwise just pick the first.
+                let target = contexts[0];
+                try {
+                    const currentWindow = await chrome.windows.getCurrent ();
+                    const sameWindow = contexts.find ((c) => c.windowId === currentWindow.id);
+                    if (sameWindow) target = sameWindow;
+                }
+                catch {
+                    // windows API unavailable — keep first context
+                }
+
+                await chrome.tabs.update (target.tabId, {active: true});
+                if (typeof target.windowId === "number") {
+                    try {
+                        await chrome.windows.update (target.windowId, {focused: true});
+                    }
+                    catch {
+                        // windows API may be unavailable — not critical
+                    }
+                }
+                return {tabId: target.tabId, windowId: target.windowId};
             }
         }
-        return tab;
+        catch {
+            // getContexts failed for some reason — fall through to create
+        }
     }
+
+    // No existing tab found, or getContexts unavailable (Chrome < 116) — create new
     return chrome.tabs.create ({url: fullUrl});
 }
