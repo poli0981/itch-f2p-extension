@@ -143,7 +143,7 @@ function distributeEntries (indexData, newEntries) {
     )];
     const fileOps = [];
 
-    let remaining = [...newEntries];
+    const remaining = [...newEntries];
 
     // If no files exist yet, seed the first one
     if (files.length === 0) {

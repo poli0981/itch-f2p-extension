@@ -1,0 +1,30 @@
+{
+    "name": "itch-f2p-extension",
+    "version": "1.3.0",
+    "private": true,
+    "type": "module",
+    "description": "itch.io F2P Tracker — Chrome extension for tracking free itch.io games",
+    "license": "GPL-3.0-only",
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint . --fix",
+        "format": "prettier --write \"**/*.{js,mjs,html,css,json,md,yml,yaml}\"",
+        "format:check": "prettier --check \"**/*.{js,mjs,html,css,json,md,yml,yaml}\"",
+        "build:detector": "node scripts/build-detector.js",
+        "validate:manifest": "node scripts/validate-manifest.js",
+        "package": "node scripts/package-extension.js",
+        "prepackage": "npm run validate:manifest && npm run build:detector",
+        "bump:patch": "node scripts/bump-version.js patch",
+        "bump:minor": "node scripts/bump-version.js minor",
+        "bump:major": "node scripts/bump-version.js major"
+    },
+    "devDependencies": {
+        "archiver": "^7.0.1",
+        "eslint": "^9.0.0",
+        "globals": "^15.0.0",
+        "prettier": "^3.0.0"
+    },
+    "engines": {
+        "node": ">=20"
+    }
+}
