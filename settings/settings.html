@@ -331,6 +331,95 @@
         </div>
     </section>
 
+    <!-- Statistics -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <line x1 = "18" y1 = "20" x2 = "18" y2 = "10"/>
+                <line x1 = "12" y1 = "20" x2 = "12" y2 = "4"/>
+                <line x1 = "6" y1 = "20" x2 = "6" y2 = "14"/>
+            </svg>
+            Statistics
+        </h2>
+        <div class = "stats-grid">
+            <div class = "stat-card">
+                <div class = "stat-label">Queue Size</div>
+                <div class = "stat-value" id = "statQueueSize">&mdash;</div>
+            </div>
+            <div class = "stat-card">
+                <div class = "stat-label">NSFW in queue</div>
+                <div class = "stat-value" id = "statNsfwPct">&mdash;</div>
+            </div>
+            <div class = "stat-card">
+                <div class = "stat-label">Total pushed</div>
+                <div class = "stat-value" id = "statTotalPushed">&mdash;</div>
+            </div>
+            <div class = "stat-card">
+                <div class = "stat-label">Top genre</div>
+                <div class = "stat-value" id = "statTopGenre">&mdash;</div>
+            </div>
+        </div>
+        <button class = "btn btn-ghost btn-sm" id = "refreshStatsBtn" style = "margin-top:var(--space-md)">
+            <svg
+                    width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <polyline points = "23 4 23 10 17 10"/>
+                <polyline points = "1 20 1 14 7 14"/>
+                <path d = "M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Refresh stats
+        </button>
+    </section>
+
+    <!-- Backup & Restore -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <path d = "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points = "17 8 12 3 7 8"/>
+                <line x1 = "12" y1 = "3" x2 = "12" y2 = "15"/>
+            </svg>
+            Backup &amp; Restore
+        </h2>
+        <p class = "text-sm text-muted" style = "margin-bottom:var(--space-md)">
+            Export your current queue to JSON for backup, or import a previously exported queue.
+            Import merges entries (duplicates skipped).
+        </p>
+        <div class = "backup-actions">
+            <button class = "btn btn-ghost btn-sm" id = "exportQueueBtn">
+                <svg
+                        width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2" stroke-linecap = "round"
+                >
+                    <path d = "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points = "7 10 12 15 17 10"/>
+                    <line x1 = "12" y1 = "15" x2 = "12" y2 = "3"/>
+                </svg>
+                Export queue
+            </button>
+            <input type = "file" id = "importQueueInput" accept = "application/json,.json" hidden>
+            <button class = "btn btn-ghost btn-sm" id = "importQueueBtn">
+                <svg
+                        width = "14" height = "14" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                        stroke-width = "2" stroke-linecap = "round"
+                >
+                    <path d = "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points = "17 8 12 3 7 8"/>
+                    <line x1 = "12" y1 = "3" x2 = "12" y2 = "15"/>
+                </svg>
+                Import queue
+            </button>
+        </div>
+        <div class = "import-status text-sm text-muted" id = "importStatus" style = "margin-top:var(--space-sm)"></div>
+    </section>
+
     <!-- Danger Zone -->
     <section class = "settings-section danger-zone">
         <h2 class = "section-heading danger-heading">

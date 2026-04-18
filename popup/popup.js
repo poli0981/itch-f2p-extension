@@ -34,6 +34,7 @@ const pushBtn          = $("#pushBtn");
 const openQueueBtn     = $("#openQueueBtn");
 const openSettingsBtn  = $("#openSettingsBtn");
 const activityList     = $("#activityList");
+const rescanBtn        = $("#rescanBtn");
 
 // ── Init ──
 
@@ -94,8 +95,10 @@ async function checkFirstRun(settings) {
 async function loadDetectedGame() {
     try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        if (!tab || !tab.url || !tab.url.match(/[a-z0-9-]+\.itch\.io\/[a-z0-9-]+/i)) {
-            showNoGame();
+        const onItchGamePage = !!(tab?.url && tab.url.match(/[a-z0-9-]+\.itch\.io\/[a-z0-9-]+/i));
+
+        if (!tab || !onItchGamePage) {
+            showNoGame(false);
             return;
         }
 
@@ -114,12 +117,45 @@ async function loadDetectedGame() {
                     const dupResp2 = await sendMessage(MSG.CHECK_DUPLICATE, { url: retry.data.url });
                     showDetectedGame(retry.data, dupResp2?.ok ? dupResp2.data : {});
                 } else {
-                    showNoGame();
+                    showNoGame(true);  // on itch.io but no detection → offer rescan
                 }
             }, 1200);
         }
     } catch {
-        showNoGame();
+        showNoGame(false);
+    }
+}
+
+/**
+ * Re-inject the content script into the active tab to retry detection.
+ * Used when automatic detection failed (e.g. content loaded via SPA after initial script).
+ */
+async function rescanCurrentTab() {
+    rescanBtn.disabled = true;
+    const origHTML = rescanBtn.innerHTML;
+    rescanBtn.innerHTML = `<span class="spinner"></span> Scanning...`;
+
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab || !tab.id) throw new Error("No active tab");
+
+        await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ["content/detector.js"],
+        });
+
+        // Give detector a moment to run and post its result to the SW
+        setTimeout(async () => {
+            detectedLoading.style.display = "block";
+            detectedNone.style.display = "none";
+            await loadDetectedGame();
+            rescanBtn.innerHTML = origHTML;
+            rescanBtn.disabled = false;
+        }, 500);
+    } catch (err) {
+        showToast(`Scan failed: ${err.message || err}`, "error");
+        rescanBtn.innerHTML = origHTML;
+        rescanBtn.disabled = false;
     }
 }
 
@@ -218,11 +254,13 @@ function appendBadge(container, text, type) {
     container.appendChild(badge);
 }
 
-function showNoGame() {
+function showNoGame(offerRescan = false) {
     detectedLoading.style.display = "none";
     detectedContent.style.display = "none";
     detectedDuplicate.style.display = "none";
     detectedNone.style.display = "block";
+    // Offer rescan only when we're on an itch.io game URL but detection failed
+    if (rescanBtn) rescanBtn.style.display = offerRescan ? "inline-flex" : "none";
 }
 
 async function loadQueueStatus() {
@@ -344,6 +382,8 @@ function bindEvents() {
         openOrFocusTab("settings/settings.html");
         window.close();
     });
+
+    if (rescanBtn) rescanBtn.addEventListener("click", rescanCurrentTab);
 }
 
 // ── Live queue count update when storage changes (popup open) ──
@@ -351,6 +391,25 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local" || !changes.queue) return;
     const size = Array.isArray(changes.queue.newValue) ? changes.queue.newValue.length : 0;
     updateQueueUI(size);
+});
+
+// ── Keyboard shortcuts ──
+document.addEventListener("keydown", (e) => {
+    const focused = document.activeElement;
+    const inInput = focused?.tagName === "INPUT" || focused?.tagName === "TEXTAREA";
+
+    if (e.key === "Enter" && !inInput && !addBtn.disabled) {
+        e.preventDefault();
+        addBtn.click();
+    } else if (e.ctrlKey && (e.key === "p" || e.key === "P") && !pushBtn.disabled) {
+        e.preventDefault();
+        pushBtn.click();
+    } else if (e.ctrlKey && (e.key === "q" || e.key === "Q")) {
+        e.preventDefault();
+        openQueueBtn.click();
+    } else if (e.key === "Escape") {
+        window.close();
+    }
 });
 
 document.addEventListener("DOMContentLoaded", init);

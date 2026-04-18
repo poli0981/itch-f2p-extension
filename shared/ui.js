@@ -58,6 +58,54 @@ export function showToast (text, type = "info", duration = 2500) {
 }
 
 /**
+ * Display a toast with an action button (e.g. "Undo").
+ * Action is invoked on button click; toast auto-dismisses after duration.
+ *
+ * @param {string} text - Main toast message
+ * @param {{label: string, onClick: () => void}} action
+ * @param {"info"|"success"|"warning"|"error"} [type="info"]
+ * @param {number} [duration=5000]
+ */
+export function showActionToast (text, action, type = "info", duration = 5000) {
+    document.querySelectorAll (".toast")
+            .forEach ((t) => t.remove ());
+
+    const toast = document.createElement ("div");
+    toast.className = `toast toast-${type} toast-action`;
+
+    const msg = document.createElement ("span");
+    msg.className = "toast-msg";
+    msg.textContent = text;
+
+    const btn = document.createElement ("button");
+    btn.className = "toast-action-btn";
+    btn.type = "button";
+    btn.textContent = action.label;
+
+    let dismissed = false;
+    const dismiss = () => {
+        if (dismissed) return;
+        dismissed = true;
+        toast.classList.add ("fade-out");
+        setTimeout (() => toast.remove (), 300);
+    };
+
+    btn.addEventListener ("click", () => {
+        try {
+            action.onClick ();
+        }
+        finally {
+            dismiss ();
+        }
+    });
+
+    toast.append (msg, btn);
+    document.body.appendChild (toast);
+
+    setTimeout (dismiss, duration);
+}
+
+/**
  * Open a bundled extension page in a tab, reusing the existing tab if already open.
  *
  * @param {string} relativeUrl - Path relative to extension root (e.g. "queue/queue.html")

@@ -7,8 +7,8 @@
  * Includes push_format selector (url_only / full_object).
  */
 
-import {DEFAULT_SETTINGS, MSG} from "../shared/constants.js";
-import {formatTime} from "../shared/utils.js";
+import {DEFAULT_SETTINGS, MSG, QUEUE_MAX} from "../shared/constants.js";
+import {formatTime, makeQueueEntry} from "../shared/utils.js";
 import {$, sendMessage, showToast} from "../shared/ui.js";
 
 const FIELD_IDS = [
@@ -313,6 +313,148 @@ async function confirmReset () {
     }
 }
 
+// ── Backup / Restore ──
+
+async function exportQueue () {
+    const resp = await sendMessage (MSG.GET_QUEUE);
+    const queue = resp?.ok ? resp.data : [];
+    if (!Array.isArray (queue) || queue.length === 0) {
+        showToast ("Queue is empty — nothing to export", "warning");
+        return;
+    }
+    const payload = {
+        format: "itch-f2p-queue",
+        exported_at: new Date ().toISOString (),
+        count: queue.length,
+        entries: queue,
+    };
+    const json = JSON.stringify (payload, null, 2);
+    const blob = new Blob ([json], {type: "application/json"});
+    const url = URL.createObjectURL (blob);
+    const a = document.createElement ("a");
+    a.href = url;
+    a.download = `itch-queue-${new Date ().toISOString ()
+                                           .slice (0, 10)}.json`;
+    a.click ();
+    URL.revokeObjectURL (url);
+    showToast (`Exported ${queue.length} game(s)`, "success");
+}
+
+async function importQueueFromFile (file) {
+    if (!file) return;
+    const statusEl = $ ("#importStatus");
+    statusEl.textContent = "Reading file...";
+    statusEl.classList.remove ("error", "success");
+
+    let parsed;
+    try {
+        const text = await file.text ();
+        parsed = JSON.parse (text);
+    }
+    catch (err) {
+        statusEl.textContent = `\u2717 Invalid JSON: ${err.message}`;
+        statusEl.classList.add ("error");
+        showToast ("Invalid JSON file", "error");
+        return;
+    }
+
+    // Accept two shapes: wrapped {entries: [...]} or raw array
+    const entries = Array.isArray (parsed) ? parsed : Array.isArray (parsed?.entries) ? parsed.entries : null;
+    if (!entries) {
+        statusEl.textContent = "\u2717 File does not contain a queue array";
+        statusEl.classList.add ("error");
+        return;
+    }
+
+    if (entries.length > QUEUE_MAX) {
+        statusEl.textContent = `\u2717 Too many entries (${entries.length}). Limit is ${QUEUE_MAX}.`;
+        statusEl.classList.add ("error");
+        return;
+    }
+
+    let added = 0;
+    let skipped = 0;
+    const errors = [];
+
+    for (const raw of entries) {
+        if (!raw || typeof raw !== "object" || !raw.url || !raw.name) {
+            skipped++;
+            continue;
+        }
+        // Rebuild entry from whitelisted fields via makeQueueEntry (strips unknown keys)
+        const sanitized = makeQueueEntry (raw);
+        // Preserve user-editable fields if present in the source
+        if (raw.genre) sanitized.genre = String (raw.genre).slice (0, 100);
+        if (raw.safe_virus) sanitized.safe_virus = String (raw.safe_virus).slice (0, 10);
+        if (raw.notes) sanitized.notes = String (raw.notes).slice (0, 500);
+
+        const resp = await sendMessage (MSG.ADD_TO_QUEUE, sanitized);
+        if (resp?.ok) added++;
+        else {
+            skipped++;
+            if (errors.length < 3 && resp?.error) errors.push (resp.error);
+        }
+    }
+
+    const summary = `Imported ${added}, skipped ${skipped}${errors.length ? ` (${errors.join ("; ")})` : ""}`;
+    statusEl.textContent = `\u2713 ${summary}`;
+    statusEl.classList.add ("success");
+    showToast (summary, added > 0 ? "success" : "warning");
+}
+
+// ── Statistics ──
+
+async function refreshStats () {
+    const [queueResp, logsResp] = await Promise.all ([
+        sendMessage (MSG.GET_QUEUE),
+        sendMessage (MSG.GET_LOGS),
+    ]);
+
+    const queue = queueResp?.ok ? queueResp.data : [];
+    const logs = logsResp?.ok ? logsResp.data : [];
+
+    const total = queue.length;
+    const nsfwCount = queue.filter ((g) => g.nsfw === "Yes").length;
+
+    // Total pushed: sum of logged push-success events
+    const pushRe = /Successfully pushed (\d+)|Pushed (\d+)/;
+    let totalPushed = 0;
+    for (const entry of logs) {
+        if (entry.category !== "push") continue;
+        const m = String (entry.message || "").match (pushRe);
+        if (m) totalPushed += parseInt (m[1] || m[2], 10) || 0;
+    }
+
+    // Top genre histogram from queue
+    const genreCounts = new Map ();
+    for (const g of queue) {
+        const genre = (
+            g.genre || ""
+        ).trim ();
+        if (!genre || genre === "N/A") continue;
+        genreCounts.set (genre, (
+            genreCounts.get (genre) || 0
+        ) + 1);
+    }
+    let topGenre = "\u2014";
+    let topCount = 0;
+    for (const [g, c] of genreCounts) {
+        if (c > topCount) {
+            topCount = c;
+            topGenre = g;
+        }
+    }
+
+    $ ("#statQueueSize").textContent = String (total);
+    $ ("#statNsfwPct").textContent = total > 0
+                                     ? `${nsfwCount} (${Math.round ((
+        nsfwCount / total
+    ) * 100)}%)`
+                                     : "0";
+    $ ("#statTotalPushed").textContent = String (totalPushed);
+    $ ("#statTopGenre").textContent = topCount > 0 ? `${topGenre} (${topCount})` : "\u2014";
+}
+
 // ── Events ──
 
 function bindEvents () {
@@ -361,11 +503,29 @@ function bindEvents () {
         .addEventListener ("click", initiateReset);
     $ ("#resetConfirmBtn")
         .addEventListener ("click", confirmReset);
+
+    // Backup & restore
+    $ ("#exportQueueBtn")
+        .addEventListener ("click", exportQueue);
+    $ ("#importQueueBtn")
+        .addEventListener ("click", () => $ ("#importQueueInput").click ());
+    $ ("#importQueueInput")
+        .addEventListener ("change", async (e) => {
+            const file = e.target.files?.[0];
+            await importQueueFromFile (file);
+            e.target.value = "";  // reset so same file can be re-imported later
+            refreshStats ();
+        });
+
+    // Stats refresh
+    $ ("#refreshStatsBtn")
+        .addEventListener ("click", refreshStats);
 }
 
 async function init () {
     await loadSettingsIntoForm ();
     bindEvents ();
+    refreshStats ();
     document.querySelectorAll (".settings-section")
             .forEach ((el, i) => {
                 el.style.opacity = "0";
@@ -376,7 +536,7 @@ async function init () {
             });
 }
 
-// ── Auto-refresh when settings change from another context (reset, external save) ──
+// ── Auto-refresh when storage changes externally ──
 chrome.storage.onChanged.addListener ((changes, area) => {
     if (area !== "local") return;
     if (changes.settings) {
@@ -387,6 +547,9 @@ chrome.storage.onChanged.addListener ((changes, area) => {
     }
     if (changes["gpg:key_meta"]) {
         loadGPGKeyInfo ();
+    }
+    if (changes.queue || changes.logs) {
+        refreshStats ();
     }
 });
 

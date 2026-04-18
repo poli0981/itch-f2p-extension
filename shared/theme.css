@@ -216,6 +216,21 @@ a:hover { color : var(--accent-hover); }
 
 .toast.fade-out { animation : toast-out 0.3s ease forwards; }
 
+.toast-action { gap : var(--space-md); }
+
+.toast-action .toast-msg { flex : 1; }
+
+.toast-action-btn {
+    background    : rgba(255, 255, 255, 0.2); color : inherit;
+    border        : 1px solid rgba(255, 255, 255, 0.3);
+    padding       : 3px var(--space-sm); border-radius : var(--radius-sm);
+    font-size     : var(--font-xs); font-weight : 700; cursor : pointer;
+    text-transform: uppercase; letter-spacing : 0.5px;
+    transition    : background var(--transition-fast);
+}
+
+.toast-action-btn:hover { background : rgba(255, 255, 255, 0.35); }
+
 @keyframes toast-in {
     from { opacity : 0; transform : translateY(12px) scale(0.95); }
     to { opacity : 1; transform : translateY(0) scale(1); }

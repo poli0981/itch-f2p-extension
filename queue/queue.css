@@ -160,3 +160,40 @@ body { background : var(--bg-tertiary); }
 .genre-custom-input { font-size : var(--font-xs) !important; padding : var(--space-xs) var(--space-sm) !important; border : 1px dashed var(--accent) !important; }
 
 .optgroup-label { font-weight : 600; color : var(--text-muted); font-size : 10px; }
+
+/* ── Bulk selection ── */
+.bulk-toolbar {
+    display         : flex; align-items : center; gap : var(--space-sm);
+    background      : var(--bg-card); border : 1px solid var(--border);
+    border-radius   : var(--radius); padding : var(--space-sm) var(--space-md);
+    margin-bottom   : var(--space-md);
+    position        : sticky; top : var(--space-sm); z-index : 5;
+    box-shadow      : var(--shadow-sm);
+}
+
+.bulk-count { font-size : var(--font-sm); color : var(--text-secondary); }
+
+.bulk-count strong { color : var(--accent); }
+
+.bulk-spacer { flex : 1; }
+
+/* Checkbox on game card */
+.game-card-select {
+    position   : absolute; top : var(--space-xs); left : var(--space-xs);
+    width      : 18px; height : 18px; cursor : pointer; margin : 0;
+    accent-color : var(--accent); z-index : 2;
+    opacity    : 0; transition : opacity var(--transition-fast);
+}
+
+.game-card:hover .game-card-select,
+.game-card.selected .game-card-select {
+    opacity : 1;
+}
+
+.game-card.selected {
+    border-color : var(--accent);
+    box-shadow   : 0 0 0 1px var(--accent), var(--shadow-sm);
+}
+
+/* When NSFW badge is present, shift checkbox slightly right to avoid overlap */
+.game-card.has-nsfw .game-card-select { left : 52px; }
