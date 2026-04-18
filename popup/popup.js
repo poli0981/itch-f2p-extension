@@ -14,8 +14,7 @@
 
 import { MSG, QUEUE_MAX } from "../shared/constants.js";
 import { truncate } from "../shared/utils.js";
-
-const $ = (s) => document.querySelector(s);
+import { $, sendMessage, showToast, openOrFocusTab } from "../shared/ui.js";
 
 const versionEl        = $("#version");
 const statusDot        = $("#statusDot");
@@ -35,24 +34,6 @@ const pushBtn          = $("#pushBtn");
 const openQueueBtn     = $("#openQueueBtn");
 const openSettingsBtn  = $("#openSettingsBtn");
 const activityList     = $("#activityList");
-
-// ── Helpers ──
-
-function sendMessage(type, data = null) {
-    return chrome.runtime.sendMessage({ type, data });
-}
-
-function showToast(text, type = "info") {
-    document.querySelectorAll(".toast").forEach((t) => t.remove());
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.textContent = text;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add("fade-out");
-        setTimeout(() => toast.remove(), 300);
-    }, 2800);
-}
 
 // ── Init ──
 
@@ -105,7 +86,7 @@ async function checkFirstRun(settings) {
     </button>`;
     section.insertBefore(banner, section.firstChild.nextSibling);
     banner.querySelector("#firstRunSetupBtn").addEventListener("click", () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL("settings/settings.html") });
+        openOrFocusTab("settings/settings.html");
         window.close();
     });
 }
@@ -355,14 +336,21 @@ function bindEvents() {
     });
 
     openQueueBtn.addEventListener("click", () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL("queue/queue.html") });
+        openOrFocusTab("queue/queue.html");
         window.close();
     });
 
     openSettingsBtn.addEventListener("click", () => {
-        chrome.tabs.create({ url: chrome.runtime.getURL("settings/settings.html") });
+        openOrFocusTab("settings/settings.html");
         window.close();
     });
 }
+
+// ── Live queue count update when storage changes (popup open) ──
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.queue) return;
+    const size = Array.isArray(changes.queue.newValue) ? changes.queue.newValue.length : 0;
+    updateQueueUI(size);
+});
 
 document.addEventListener("DOMContentLoaded", init);

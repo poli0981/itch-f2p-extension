@@ -49,15 +49,35 @@ export async function storageClearAll () {
     }
 }
 
-// ── Settings ──
+// ── Settings (with in-memory cache to reduce chrome.storage reads) ──
+
+let _settingsCache = null;
+let _settingsCachedAt = 0;
+const SETTINGS_TTL_MS = 30_000;  // 30s — short TTL because settings rarely change mid-session
 
 export async function loadSettings () {
+    if (_settingsCache && Date.now () - _settingsCachedAt < SETTINGS_TTL_MS) {
+        return _settingsCache;
+    }
     const stored = await storageGet (STORAGE_KEYS.SETTINGS, {});
-    return {...DEFAULT_SETTINGS, ...stored};
+    _settingsCache = {...DEFAULT_SETTINGS, ...stored};
+    _settingsCachedAt = Date.now ();
+    return _settingsCache;
 }
 
 export async function saveSettings (settings) {
     await storageSet (STORAGE_KEYS.SETTINGS, settings);
+    // Update cache immediately so subsequent loadSettings() reflects the new values
+    _settingsCache = {...DEFAULT_SETTINGS, ...settings};
+    _settingsCachedAt = Date.now ();
+}
+
+/**
+ * Invalidate settings cache — call after external changes (e.g. RESET_EXTENSION).
+ */
+export function invalidateSettingsCache () {
+    _settingsCache = null;
+    _settingsCachedAt = 0;
 }
 
 // ── Queue ──

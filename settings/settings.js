@@ -9,8 +9,7 @@
 
 import {DEFAULT_SETTINGS, MSG} from "../shared/constants.js";
 import {formatTime} from "../shared/utils.js";
-
-const $ = (s) => document.querySelector (s);
+import {$, sendMessage, showToast} from "../shared/ui.js";
 
 const FIELD_IDS = [
     "github_owner", "github_repo", "github_branch", "github_token",
@@ -20,21 +19,6 @@ const FIELD_IDS = [
     "cache_ttl_minutes",
     "log_level", "log_max_entries",
 ];
-
-function sendMessage (type, data = null) {
-    return chrome.runtime.sendMessage ({type, data});
-}
-
-function showToast (text, type = "info") {
-    const toast = document.createElement ("div");
-    toast.className = `toast toast-${type}`;
-    toast.textContent = text;
-    document.body.appendChild (toast);
-    setTimeout (() => {
-        toast.classList.add ("fade-out");
-        setTimeout (() => toast.remove (), 300);
-    }, 2500);
-}
 
 // ── Load ──
 
@@ -391,5 +375,19 @@ async function init () {
                 }, i * 80);
             });
 }
+
+// ── Auto-refresh when settings change from another context (reset, external save) ──
+chrome.storage.onChanged.addListener ((changes, area) => {
+    if (area !== "local") return;
+    if (changes.settings) {
+        // Re-sync form without overwriting in-flight edits: only if not currently typing
+        if (document.activeElement?.tagName !== "INPUT" && document.activeElement?.tagName !== "TEXTAREA") {
+            loadSettingsIntoForm ();
+        }
+    }
+    if (changes["gpg:key_meta"]) {
+        loadGPGKeyInfo ();
+    }
+});
 
 document.addEventListener ("DOMContentLoaded", init);

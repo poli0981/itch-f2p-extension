@@ -172,17 +172,3 @@ export async function getQueueSize () {
     const queue = await loadQueue ();
     return queue.length;
 }
-
-export async function clearQueue () {
-    await saveQueue ([]);
-    await logInfo ("queue", "Queue cleared");
-    return {ok: true};
-}
-
-export async function getEntry (gameUrl) {
-    if (!gameUrl) return null;
-    const gameId = extractGameId (gameUrl);
-    if (!gameId) return null;
-    const queue = await loadQueue ();
-    return queue.find ((g) => extractGameId (g.url) === gameId) || null;
-}
