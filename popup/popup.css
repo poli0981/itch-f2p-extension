@@ -10,14 +10,19 @@ body {
     background : var(--bg-tertiary);
 }
 
-/* ── Header ── */
+/* ── Header (sticky with subtle glass) ── */
 .popup-header {
-    display         : flex;
-    align-items     : center;
-    justify-content : space-between;
-    padding         : var(--space-md) var(--space-lg);
-    background      : var(--bg-primary);
-    border-bottom   : 1px solid var(--border);
+    display                 : flex;
+    align-items             : center;
+    justify-content         : space-between;
+    padding                 : var(--space-md) var(--space-lg);
+    background              : var(--bg-primary-alpha);
+    backdrop-filter         : saturate(1.4) blur(12px);
+    -webkit-backdrop-filter : saturate(1.4) blur(12px);
+    border-bottom           : 1px solid var(--border);
+    position                : sticky;
+    top                     : 0;
+    z-index                 : 10;
 }
 
 .logo-icon {
@@ -29,7 +34,7 @@ body {
 
 .popup-title {
     font-size      : var(--font-md);
-    font-weight    : 700;
+    font-weight    : 650;
     color          : var(--text-heading);
     letter-spacing : -0.2px;
     line-height    : 1.2;
