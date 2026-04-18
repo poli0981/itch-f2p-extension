@@ -13,7 +13,7 @@
  */
 
 import {MSG} from "../shared/constants.js";
-import {loadQueue, loadSettings, saveSettings, storageClearAll} from "../shared/storage.js";
+import {invalidateSettingsCache, loadQueue, loadSettings, saveSettings, storageClearAll} from "../shared/storage.js";
 import {clearLogs, exportLogsJSON, getLogs, logError, logInfo, logWarn} from "../shared/logger.js";
 import {extractGameId} from "../shared/utils.js";
 import {addToQueue, getQueueSize, removeFromQueue, updateEntry} from "./queue-manager.js";
@@ -231,6 +231,7 @@ async function handleMessage (message, sender) {
             detectedGames.clear ();
             clearDedupCache ();
             clearGitHubCache ();
+            invalidateSettingsCache ();
             await updateBadge ();
             return {ok: true};
         }

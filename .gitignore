@@ -1,2 +1,4 @@
 .idea/
 .idea/.gitignore
+# Local Claude session data
+.claude/

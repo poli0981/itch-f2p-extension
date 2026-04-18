@@ -37,8 +37,8 @@ export async function log (level, category, message, data = undefined) {
         const logs = await storageGet (STORAGE_KEYS.LOGS, []);
         logs.push (entry);
 
-        while (logs.length > maxEntries) {
-            logs.shift ();
+        if (logs.length > maxEntries) {
+            logs.splice (0, logs.length - maxEntries);
         }
 
         await storageSet (STORAGE_KEYS.LOGS, logs);
@@ -62,11 +62,6 @@ export async function getLogs (filter = {}) {
         if (filter.category && entry.category !== filter.category) return false;
         return true;
     });
-}
-
-export async function getRecentLogs (n = 5) {
-    const logs = await storageGet (STORAGE_KEYS.LOGS, []);
-    return logs.slice (-n);
 }
 
 export async function clearLogs () {

@@ -137,7 +137,8 @@ const SYMBOLS = [
 
 /**
  * Flattened, deduplicated, lowercase keyword set.
- * Exported as an array for use in content script and push handler.
+ * Single source of truth — content/detector.js imports via build step
+ * (scripts/build-detector.js) since MV3 content scripts cannot use ES modules.
  */
 const ALL_KEYWORDS = [
     ...EN, ...JA, ...ZH, ...KO,
@@ -147,14 +148,3 @@ const ALL_KEYWORDS = [
 
 // Deduplicate and lowercase
 export const NSFW_KEYWORDS = [...new Set(ALL_KEYWORDS.map((k) => k.toLowerCase()))];
-
-/**
- * Check if text contains any NSFW keyword.
- * @param {string} text - Text to scan (will be lowercased)
- * @returns {boolean}
- */
-export function containsNSFW(text) {
-    if (!text) return false;
-    const lower = text.toLowerCase();
-    return NSFW_KEYWORDS.some((kw) => lower.includes(kw));
-}

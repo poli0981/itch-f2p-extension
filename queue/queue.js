@@ -15,8 +15,8 @@
 
 import { MSG, EDITABLE_FIELDS, GENRE_PRESETS } from "../shared/constants.js";
 import { extractGameId, formatTime, truncate } from "../shared/utils.js";
+import { $, sendMessage, showToast } from "../shared/ui.js";
 
-const $ = (s) => document.querySelector(s);
 const queueCountEl = $("#queueCount");
 const queueGrid    = $("#queueGrid");
 const emptyState   = $("#emptyState");
@@ -26,22 +26,6 @@ const pushAllBtn   = $("#pushAllBtn");
 const clearAllBtn  = $("#clearAllBtn");
 
 let currentQueue = [];
-
-function sendMessage(type, data = null) {
-    return chrome.runtime.sendMessage({ type, data });
-}
-
-function showToast(text, type = "info") {
-    document.querySelectorAll(".toast").forEach((t) => t.remove());
-    const toast = document.createElement("div");
-    toast.className = `toast toast-${type}`;
-    toast.textContent = text;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.classList.add("fade-out");
-        setTimeout(() => toast.remove(), 300);
-    }, 2500);
-}
 
 // ── Render ──
 
@@ -491,6 +475,13 @@ document.addEventListener("keydown", (e) => {
         renderQueue(currentQueue, "");
         searchInput.blur();
     }
+});
+
+// ── Auto-refresh when queue changes (add from popup, push elsewhere, etc.) ──
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.queue) return;
+    const newQueue = Array.isArray(changes.queue.newValue) ? changes.queue.newValue : [];
+    renderQueue(newQueue, searchInput.value.trim());
 });
 
 document.addEventListener("DOMContentLoaded", loadQueue);

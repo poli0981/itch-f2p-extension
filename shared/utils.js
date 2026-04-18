@@ -59,28 +59,6 @@ export function extractGameId(url) {
 }
 
 /**
- * Extract creator name from an itch.io URL.
- * @param {string} url
- * @returns {string|null}
- */
-export function extractCreator(url) {
-    if (!url) return null;
-    const match = url.match(ITCH_URL_EXTRACT_RE);
-    return match ? match[1] : null;
-}
-
-/**
- * Extract game slug from an itch.io URL.
- * @param {string} url
- * @returns {string|null}
- */
-export function extractSlug(url) {
-    if (!url) return null;
-    const match = url.match(ITCH_URL_EXTRACT_RE);
-    return match ? match[2] : null;
-}
-
-/**
  * Get current UTC timestamp in ISO format.
  * @returns {string}
  */
@@ -113,32 +91,6 @@ export function formatTime(iso) {
 export function truncate(str, max = 50) {
     if (!str || str.length <= max) return str || "";
     return str.slice(0, max - 3) + "...";
-}
-
-/**
- * Sanitize a string for safe DOM insertion.
- * @param {string} str
- * @returns {string}
- */
-export function sanitize(str) {
-    if (!str) return "";
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-/**
- * Simple debounce.
- * @param {Function} fn
- * @param {number} ms
- * @returns {Function}
- */
-export function debounce(fn, ms = 300) {
-    let timer;
-    return (...args) => {
-        clearTimeout(timer);
-        timer = setTimeout(() => fn(...args), ms);
-    };
 }
 
 /**
