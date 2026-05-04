@@ -19,6 +19,7 @@ const FIELD_IDS = [
     "committer_name", "committer_email",
     "gpg_enabled",
     "auto_push_threshold", "commit_prefix", "push_format",
+    "auto_dedup_queue",
     "cache_ttl_minutes",
     "log_level", "log_max_entries",
 ];

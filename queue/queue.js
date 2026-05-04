@@ -26,6 +26,7 @@ const queueGrid    = $("#queueGrid");
 const emptyState   = $("#emptyState");
 const searchInput  = $("#searchInput");
 const refreshBtn   = $("#refreshBtn");
+const dedupBtn     = $("#dedupBtn");
 const pushAllBtn   = $("#pushAllBtn");
 const clearAllBtn  = $("#clearAllBtn");
 
@@ -563,7 +564,8 @@ async function handleBulkPush() {
     if (resp?.ok) {
         const label = resp.signed ? " (GPG signed)" : "";
         const target = formatPushTarget(resp);
-        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success", 3200);
+        const dedupedNote = resp.deduped > 0 ? ` (${resp.deduped} skipped — already in remote)` : "";
+        showToast(`Pushed ${resp.pushed} game(s)${label}${target}${dedupedNote}`, "success", 3500);
         selection.clear();
         await loadQueue();
     } else if (resp?.gpgFailed) {
@@ -662,6 +664,38 @@ refreshBtn.addEventListener("click", async () => {
     showToast("Queue refreshed", "info");
 });
 
+dedupBtn.addEventListener("click", async () => {
+    const orig = dedupBtn.innerHTML;
+    dedupBtn.disabled = true;
+    dedupBtn.innerHTML = `<span class="spinner"></span> Checking...`;
+    const resp = await sendMessage(MSG.DEDUP_QUEUE, { forceRefresh: true, trigger: "manual" });
+    if (resp?.ok) {
+        if (resp.removed > 0) {
+            showToast(`Removed ${resp.removed} duplicate(s) already in remote`, "success", 3500);
+        } else {
+            const n = resp.remoteCount || 0;
+            showToast(`No duplicates found (${n} remote URL${n === 1 ? "" : "s"} checked)`, "info");
+        }
+    } else if (resp?.skipped) {
+        showToast(`Remote unreachable — dedup skipped`, "warning");
+    } else {
+        showToast(resp?.error || "Dedup failed", "error");
+    }
+    dedupBtn.disabled = false;
+    dedupBtn.innerHTML = orig;
+});
+
+async function autoTriggerDedup(trigger) {
+    const settingsResp = await sendMessage(MSG.GET_SETTINGS);
+    const settings = settingsResp?.ok ? settingsResp.data : {};
+    if (!settings.auto_dedup_queue) return;
+    const resp = await sendMessage(MSG.DEDUP_QUEUE, { forceRefresh: false, trigger });
+    if (resp?.ok && resp.removed > 0) {
+        showToast(`Removed ${resp.removed} duplicate(s) already in remote`, "info", 3500);
+        // storage.onChanged listener handles re-render
+    }
+}
+
 pushAllBtn.addEventListener("click", async () => {
     if (currentQueue.length === 0) return;
     if (!confirm(`Push ${currentQueue.length} game(s) to GitHub?`)) return;
@@ -674,7 +708,8 @@ pushAllBtn.addEventListener("click", async () => {
     if (resp?.ok) {
         const label = resp.signed ? " (GPG signed)" : "";
         const target = formatPushTarget(resp);
-        showToast(`Pushed ${resp.pushed} game(s)${label}${target}`, "success", 3200);
+        const dedupedNote = resp.deduped > 0 ? ` (${resp.deduped} skipped — already in remote)` : "";
+        showToast(`Pushed ${resp.pushed} game(s)${label}${target}${dedupedNote}`, "success", 3500);
         await loadQueue();
     } else if (resp?.gpgFailed) {
         const fallback = confirm(`GPG signing failed: ${resp.error}\n\nPush unsigned instead?`);
@@ -757,4 +792,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     renderQueue(newQueue, searchInput.value.trim());
 });
 
-document.addEventListener("DOMContentLoaded", loadQueue);
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadQueue();
+    autoTriggerDedup("queue_open").catch(() => {});
+});

@@ -217,6 +217,19 @@
                     <code>full_object</code>: pushes complete game data directly to game_info.json (no re-scrape).</span>
             </div>
         </div>
+        <div class = "toggle-row" style = "margin-top:12px">
+            <label class = "toggle-label" for = "auto_dedup_queue">
+                Auto-dedup queue
+                <span class = "field-hint" style = "display:block; margin-top:2px">
+                    Silently remove queue entries already in remote (after push, on cache refresh, on queue open).
+                    Pre-push dedup is always on regardless of this setting.
+                </span>
+            </label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "auto_dedup_queue">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
     </section>
 
     <!-- Cache -->

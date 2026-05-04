@@ -13,8 +13,9 @@
 
 import {QUEUE_MAX} from "../shared/constants.js";
 import {loadQueue, saveQueue} from "../shared/storage.js";
-import {extractGameId, makeQueueEntry} from "../shared/utils.js";
+import {extractGameId, makeQueueEntry, normalizeUrl} from "../shared/utils.js";
 import {logInfo, logWarn} from "../shared/logger.js";
+import {fetchRemoteUrls} from "./dedup-checker.js";
 
 // Fields the user cannot edit
 const AUTO_LOCKED_FIELDS = new Set ([
@@ -213,4 +214,92 @@ export async function reorderQueue (orderedUrls) {
     await saveQueue (reordered);
     await logInfo ("queue", `Queue reordered (${reordered.length} entries)`);
     return {ok: true, data: {queueSize: reordered.length}};
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Auto-dedup against remote
+// ────────────────────────────────────────────────────────────────────
+
+let _dedupInFlight = null;
+
+/**
+ * Remove queue entries whose URL already exists in the remote repo.
+ * Concurrent calls coalesce to a single in-flight promise.
+ *
+ * @param {object}  [opts]
+ * @param {boolean} [opts.forceRefresh=false] - Bypass dedup cache TTL
+ * @param {string}  [opts.trigger="manual"]   - "manual" | "post_push" | "cache_refresh" | "queue_open" | "pre_push"
+ * @returns {Promise<{
+ *   ok: boolean, removed: number, removedUrls: string[],
+ *   remoteCount?: number, skipped?: boolean, error?: string
+ * }>}
+ */
+export async function dedupeQueueAgainstRemote (opts = {}) {
+    if (_dedupInFlight) return _dedupInFlight;
+
+    const trigger = opts.trigger || "manual";
+    const forceRefresh = !!opts.forceRefresh;
+
+    _dedupInFlight = (
+        async () => {
+            const queue = await loadQueue ();
+            if (queue.length === 0) {
+                return {ok: true, removed: 0, removedUrls: []};
+            }
+
+            let remoteSet;
+            try {
+                remoteSet = await fetchRemoteUrls (forceRefresh);
+            }
+            catch (err) {
+                await logWarn ("dedup", `Remote fetch failed during dedup (${trigger}): ${err.message || err}`);
+                return {ok: false, skipped: true, removed: 0, removedUrls: [], error: err.message || String (err)};
+            }
+
+            if (!remoteSet || remoteSet.size === 0) {
+                return {ok: true, removed: 0, removedUrls: [], remoteCount: 0};
+            }
+
+            const removed = [];
+            const kept = [];
+            for (const entry of queue) {
+                const norm = normalizeUrl (entry.url);
+                if (norm && remoteSet.has (norm)) removed.push (entry);
+                else kept.push (entry);
+            }
+
+            if (removed.length === 0) {
+                return {ok: true, removed: 0, removedUrls: [], remoteCount: remoteSet.size};
+            }
+
+            await saveQueue (kept);
+
+            const removedUrls = removed.map ((e) => e.url);
+            const sample = removedUrls.slice (0, 5);
+            await logInfo (
+                "dedup",
+                `Auto-dedup removed ${removed.length} ${removed.length === 1 ? "entry" : "entries"} already in remote`,
+                {
+                    trigger,
+                    removedUrls: sample,
+                    truncated: removedUrls.length > 5,
+                    remoteCount: remoteSet.size,
+                },
+            );
+
+            return {
+                ok: true,
+                removed: removed.length,
+                removedUrls,
+                remoteCount: remoteSet.size,
+            };
+        }
+    ) ();
+
+    try {
+        return await _dedupInFlight;
+    }
+    finally {
+        _dedupInFlight = null;
+    }
 }
