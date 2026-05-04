@@ -44,6 +44,7 @@ import {
     updateRef,
 } from "./github-api.js";
 import {refreshDedupCache} from "./dedup-checker.js";
+import {dedupeQueueAgainstRemote} from "./queue-manager.js";
 import {buildCommitPayload, getKeyMeta, isSigningAvailable, signCommitPayload} from "./gpg-signer.js";
 
 // ════════════════════════════════════════════════════════════
@@ -472,9 +473,28 @@ export async function pushQueue (opts = {}) {
         return {ok: false, pushed: 0, error: "GitHub not configured — check Settings"};
     }
 
+    const initialQueue = await loadQueue ();
+    if (initialQueue.length === 0) {
+        return {ok: false, pushed: 0, error: "Queue is empty"};
+    }
+
+    // Pre-push dedup (always on for data integrity, regardless of auto_dedup_queue setting)
+    const preDedup = await dedupeQueueAgainstRemote ({forceRefresh: true, trigger: "pre_push"});
+    if (!preDedup.ok && !preDedup.skipped) {
+        await logWarn ("push", `Pre-push dedup error: ${preDedup.error || "unknown"}`);
+        // proceed anyway — fail-open: don't block push due to dedup network issues
+    }
+
     const queue = await loadQueue ();
     if (queue.length === 0) {
-        return {ok: false, pushed: 0, error: "Queue is empty"};
+        return {
+            ok: false,
+            pushed: 0,
+            deduped: preDedup.removed || 0,
+            error: preDedup.removed > 0
+                   ? `All ${preDedup.removed} entries already in remote — nothing to push`
+                   : "Queue is empty",
+        };
     }
 
     let toPush, toKeep;
@@ -489,7 +509,14 @@ export async function pushQueue (opts = {}) {
     }
 
     if (toPush.length === 0) {
-        return {ok: false, pushed: 0, error: "No matching entries found"};
+        return {
+            ok: false,
+            pushed: 0,
+            deduped: preDedup.removed || 0,
+            error: preDedup.removed > 0
+                   ? `Selected entries already in remote (${preDedup.removed} auto-removed)`
+                   : "No matching entries found",
+        };
     }
 
     await logInfo ("push", `Pushing ${toPush.length} game(s) to ${settings.github_owner}/${settings.github_repo}...`);
@@ -504,7 +531,18 @@ export async function pushQueue (opts = {}) {
 
             if (result.ok) {
                 await saveQueue (toKeep);
-                refreshDedupCache ().catch (() => {});
+                refreshDedupCache ()
+                    .then (async () => {
+                        // Post-push auto-dedup (cache just refreshed → no need forceRefresh again)
+                        try {
+                            const s = await loadSettings ();
+                            if (s.auto_dedup_queue) {
+                                await dedupeQueueAgainstRemote ({forceRefresh: false, trigger: "post_push"});
+                            }
+                        }
+                        catch {/* fire-and-forget */}
+                    })
+                    .catch (() => {});
 
                 const signedLabel = result.signed ? " (GPG signed)" : "";
                 const format = settings.push_format || "url_only";
@@ -514,6 +552,7 @@ export async function pushQueue (opts = {}) {
                     remaining: toKeep.length,
                     signed: !!result.signed,
                     target: targetLabel,
+                    deduped: preDedup.removed || 0,
                 });
 
                 return {
@@ -524,6 +563,7 @@ export async function pushQueue (opts = {}) {
                     signed: !!result.signed,
                     target: targetLabel,
                     files: result.files || [],
+                    deduped: preDedup.removed || 0,
                 };
             }
         }
@@ -559,9 +599,27 @@ export async function pushQueueUnsigned (opts = {}) {
     const settings = await loadSettings ();
     const overridden = {...settings, gpg_enabled: false};
 
+    const initialQueue = await loadQueue ();
+    if (initialQueue.length === 0) {
+        return {ok: false, pushed: 0, error: "Queue is empty"};
+    }
+
+    // Pre-push dedup (always on for data integrity)
+    const preDedup = await dedupeQueueAgainstRemote ({forceRefresh: true, trigger: "pre_push"});
+    if (!preDedup.ok && !preDedup.skipped) {
+        await logWarn ("push", `Pre-push dedup error: ${preDedup.error || "unknown"}`);
+    }
+
     const queue = await loadQueue ();
     if (queue.length === 0) {
-        return {ok: false, pushed: 0, error: "Queue is empty"};
+        return {
+            ok: false,
+            pushed: 0,
+            deduped: preDedup.removed || 0,
+            error: preDedup.removed > 0
+                   ? `All ${preDedup.removed} entries already in remote — nothing to push`
+                   : "Queue is empty",
+        };
     }
 
     let toPush, toKeep;
@@ -576,7 +634,14 @@ export async function pushQueueUnsigned (opts = {}) {
     }
 
     if (toPush.length === 0) {
-        return {ok: false, pushed: 0, error: "No matching entries found"};
+        return {
+            ok: false,
+            pushed: 0,
+            deduped: preDedup.removed || 0,
+            error: preDedup.removed > 0
+                   ? `Selected entries already in remote (${preDedup.removed} auto-removed)`
+                   : "No matching entries found",
+        };
     }
 
     await logInfo ("push", `Pushing ${toPush.length} game(s) unsigned (GPG fallback)...`);
@@ -585,13 +650,24 @@ export async function pushQueueUnsigned (opts = {}) {
         const result = await executePush (toPush, overridden);
         if (result.ok) {
             await saveQueue (toKeep);
-            refreshDedupCache ().catch (() => {});
+            refreshDedupCache ()
+                .then (async () => {
+                    try {
+                        const s = await loadSettings ();
+                        if (s.auto_dedup_queue) {
+                            await dedupeQueueAgainstRemote ({forceRefresh: false, trigger: "post_push"});
+                        }
+                    }
+                    catch {/* fire-and-forget */}
+                })
+                .catch (() => {});
 
             const format = overridden.push_format || "url_only";
             const targetLabel = format === "full_object" ? "data_game/" : "temp_link.json";
             await logInfo ("push", `Pushed ${toPush.length} game(s) unsigned → ${targetLabel}`, {
                 commitSha: result.commitSha,
                 target: targetLabel,
+                deduped: preDedup.removed || 0,
             });
 
             return {
@@ -600,6 +676,7 @@ export async function pushQueueUnsigned (opts = {}) {
                 commitSha: result.commitSha,
                 remaining: toKeep.length,
                 signed: false,
+                deduped: preDedup.removed || 0,
             };
         }
     }

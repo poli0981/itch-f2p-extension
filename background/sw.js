@@ -16,7 +16,14 @@ import {MSG} from "../shared/constants.js";
 import {invalidateSettingsCache, loadQueue, loadSettings, saveSettings, storageClearAll} from "../shared/storage.js";
 import {clearLogs, exportLogsJSON, getLogs, logError, logInfo, logWarn} from "../shared/logger.js";
 import {extractGameId} from "../shared/utils.js";
-import {addToQueue, getQueueSize, removeFromQueue, reorderQueue, updateEntry} from "./queue-manager.js";
+import {
+    addToQueue,
+    dedupeQueueAgainstRemote,
+    getQueueSize,
+    removeFromQueue,
+    reorderQueue,
+    updateEntry,
+} from "./queue-manager.js";
 import {checkDuplicate, clearDedupCache, refreshDedupCache} from "./dedup-checker.js";
 import {pushQueue, pushQueueUnsigned} from "./push-handler.js";
 import {clearCache as clearGitHubCache} from "./github-api.js";
@@ -192,11 +199,35 @@ async function handleMessage (message, sender) {
             try {
                 clearGitHubCache ();
                 const count = await refreshDedupCache ();
+                // Auto-dedup queue if setting enabled (cache just refreshed -> no need to forceRefresh again)
+                try {
+                    const settings = await loadSettings ();
+                    if (settings.auto_dedup_queue) {
+                        const dedup = await dedupeQueueAgainstRemote ({
+                            forceRefresh: false,
+                            trigger: "cache_refresh",
+                        });
+                        if (dedup.ok && dedup.removed > 0) await updateBadge ();
+                    }
+                }
+                catch (err) {
+                    await logWarn ("dedup", `Auto-dedup after cache refresh failed: ${err.message || err}`);
+                }
                 return {ok: true, data: {urlCount: count}};
             }
             catch (err) {
                 return {ok: false, error: err.message || "Cache refresh failed"};
             }
+        }
+
+        // ── Dedup queue against remote ──
+        case MSG.DEDUP_QUEUE: {
+            const result = await dedupeQueueAgainstRemote ({
+                forceRefresh: data?.forceRefresh ?? false,
+                trigger: data?.trigger || "manual",
+            });
+            if (result.ok && result.removed > 0) await updateBadge ();
+            return result;
         }
 
         // ── Settings ──

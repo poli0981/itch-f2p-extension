@@ -87,6 +87,9 @@ export const DEFAULT_SETTINGS = {
     // Cache
     cache_ttl_minutes: 5,
 
+    // Dedup
+    auto_dedup_queue: true,
+
     // Logging
     log_level: "info",
     log_max_entries: 500,
@@ -115,4 +118,5 @@ export const MSG = {
     GPG_GET_KEY_META:    "GPG_GET_KEY_META",
     GPG_REMOVE_KEY:      "GPG_REMOVE_KEY",
     PUSH_QUEUE_UNSIGNED: "PUSH_QUEUE_UNSIGNED",
+    DEDUP_QUEUE:         "DEDUP_QUEUE",
 };
