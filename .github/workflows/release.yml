@@ -40,11 +40,20 @@ jobs:
       - name: Package extension
         run: npm run package
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v3
-        with:
-          files: dist/itch-f2p-tracker-*.zip
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-          discussion_category_name: Announcements
+      # Use `gh release create` (atomic POST) instead of softprops/action-gh-release@v2
+      # to avoid the create-then-update flow that breaks `discussion_category_name`
+      # (GitHub REST PATCH does not accept that field; see softprops/action-gh-release#440).
+      - name: Create GitHub Release (with auto-Discussion)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            echo "Release ${GITHUB_REF_NAME} already exists — uploading/replacing assets only."
+            gh release upload "${GITHUB_REF_NAME}" dist/itch-f2p-tracker-*.zip --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              dist/itch-f2p-tracker-*.zip \
+              --title "${GITHUB_REF_NAME}" \
+              --generate-notes \
+              --discussion-category Announcements
+          fi
