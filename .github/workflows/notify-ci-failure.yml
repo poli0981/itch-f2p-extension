@@ -2,7 +2,7 @@ name: Notify CI Failures
 
 on:
   workflow_run:
-    workflows: ["*"]
+    workflows: ["CI", "Release", "Announce Release to Discord", "Version Bump"]
     types: [completed]
 
 # REQUIRED: declare permissions matching the reusable workflow's needs.

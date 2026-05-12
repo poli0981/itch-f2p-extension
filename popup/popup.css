@@ -246,3 +246,37 @@ body {
     flex-shrink : 0;
     margin-top  : 1px;
 }
+
+/* ── Footer action row (Bug / Donate / Social) ── */
+.ext-footer-actions {
+    display         : flex;
+    justify-content : center;
+    gap             : var(--space-md);
+    margin-bottom   : var(--space-sm);
+}
+
+.footer-icon-btn {
+    display         : inline-flex;
+    align-items     : center;
+    justify-content : center;
+    width           : 28px;
+    height          : 28px;
+    border          : 1px solid var(--border);
+    border-radius   : 6px;
+    color           : var(--text-muted);
+    text-decoration : none;
+    background      : transparent;
+    transition      : color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.footer-icon-btn:hover,
+.footer-icon-btn:focus-visible {
+    color        : var(--accent);
+    border-color : var(--accent);
+    background   : var(--accent-glow);
+    outline      : none;
+}
+
+.ext-footer-text {
+    /* Inherits text-align/center from .ext-footer */
+}
