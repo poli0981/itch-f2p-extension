@@ -19,7 +19,7 @@
         "bump:major": "node scripts/bump-version.js major"
     },
     "devDependencies": {
-        "archiver": "^7.0.1",
+        "archiver": "^8.0.0",
         "eslint": "^10.3.0",
         "globals": "^15.0.0",
         "prettier": "^3.0.0"
