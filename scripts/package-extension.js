@@ -10,7 +10,12 @@
 import { createWriteStream, mkdirSync, readFileSync, statSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import archiver from "archiver";
+import { createRequire } from "node:module";
+
+// archiver v8 dropped the legacy callable default export and now exposes
+// format-specific classes. Load via CJS interop and use `new ZipArchive(opts)`.
+const require = createRequire(import.meta.url);
+const { ZipArchive } = require("archiver");
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "..");
@@ -22,7 +27,7 @@ const outPath = resolve(distDir, `itch-f2p-tracker-v${manifest.version}.zip`);
 mkdirSync(distDir, { recursive: true });
 
 const output = createWriteStream(outPath);
-const archive = archiver("zip", { zlib: { level: 9 } });
+const archive = new ZipArchive({ zlib: { level: 9 } });
 
 output.on("close", () => {
     const sizeKb = (archive.pointer() / 1024).toFixed(1);
