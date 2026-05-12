@@ -3,8 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/dependabot.yml"
   pull_request:
     branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "LICENSE"
+      - ".github/FUNDING.yml"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/dependabot.yml"
 
 jobs:
   validate:

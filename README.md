@@ -173,6 +173,12 @@ Shared modules include `github-api.js`, `gpg-signer.js`, `storage.js`, and `logg
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for code style, testing checklist, and PR guidelines.
 
+## Dev environment
+
+- [Developer machine spec](docs/pc_spec.md) — hardware used by the maintainer (transparency only, not a requirement).
+- [Development environment](docs/dev_env.md) — IDE, toolchains, scripts, and release workflow.
+- Vietnamese mirrors under [docs/i18n/vi/](docs/i18n/vi/).
+
 ## Security
 
 See [SECURITY.md](SECURITY.md). Report vulnerabilities via
@@ -190,6 +196,13 @@ See [SECURITY.md](SECURITY.md). Report vulnerabilities via
 <a href="https://ko-fi.com/skullmute"><img src="https://img.shields.io/badge/Ko--fi-Support-ff5e5b?logo=ko-fi&logoColor=white" alt="Ko-fi"></a>
 <a href="https://www.buymeacoffee.com/skullmute"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support-FFDD00?logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee"></a>
 <a href="https://patreon.com/skullmute"><img src="https://img.shields.io/badge/Patreon-Support-F96854?logo=patreon&logoColor=white" alt="Patreon"></a>
+<a href="https://paypal.me/DungDang212"><img src="https://img.shields.io/badge/PayPal-Support-00457C?logo=paypal&logoColor=white" alt="PayPal"></a>
+<a href="https://github.com/sponsors/poli0981"><img src="https://img.shields.io/badge/GitHub%20Sponsors-Support-EA4AAA?logo=github&logoColor=white" alt="GitHub Sponsors"></a>
+
+## Author & Contact
+
+Maintained by **poli0981 / SkullMute**. Full list of social, Discord,
+Telegram, and email channels: [docs/SOCIAL.md](docs/SOCIAL.md).
 
 ---
 

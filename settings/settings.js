@@ -547,6 +547,11 @@ async function init () {
     await syncThemePicker ();
     bindEvents ();
     refreshStats ();
+
+    // About & Support: show current version from manifest
+    const versionEl = $ ("#aboutVersion");
+    if (versionEl) versionEl.textContent = `v${chrome.runtime.getManifest ().version}`;
+
     document.querySelectorAll (".settings-section")
             .forEach ((el, i) => {
                 el.style.opacity = "0";
