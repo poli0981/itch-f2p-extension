@@ -90,6 +90,11 @@ export const DEFAULT_SETTINGS = {
     // Dedup
     auto_dedup_queue: true,
 
+    // Auto-collect
+    auto_collect: false,
+    auto_collect_show_paid_toast: true,
+    auto_collect_show_dup_toast: true,
+
     // Logging
     log_level: "info",
     log_max_entries: 500,
@@ -98,6 +103,7 @@ export const DEFAULT_SETTINGS = {
 // ── Message types ──
 export const MSG = {
     GAME_DETECTED:       "GAME_DETECTED",
+    REQUEST_AUTO_COLLECT: "REQUEST_AUTO_COLLECT",
     GET_QUEUE:           "GET_QUEUE",
     ADD_TO_QUEUE:        "ADD_TO_QUEUE",
     REMOVE_FROM_QUEUE:   "REMOVE_FROM_QUEUE",

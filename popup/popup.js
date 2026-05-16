@@ -40,6 +40,11 @@ const openSettingsBtn  = $("#openSettingsBtn");
 const activityList     = $("#activityList");
 const rescanBtn        = $("#rescanBtn");
 
+// Module state: track current queue size + last detected game so the
+// addBtn can reactively reflect queue-full when storage changes.
+let currentQueueSize = 0;
+let _lastDetected = null;  // {game, dupData} — null after add or in non-actionable branches
+
 /**
  * Format the target segment of a push-success toast.
  * Shows per-file breakdown when the push spanned multiple data files.
@@ -221,8 +226,10 @@ function showDetectedGame(game, dupData = {}) {
     if (game.is_free === false) {
         appendBadge(detectedBadges, game.price ? `Paid (${game.price})` : "Paid", "error");
         addBtn.disabled = true;
+        addBtn.removeAttribute("data-reason");
         addBtn.textContent = "Not Free \u2014 Ignored";
         detectedDuplicate.style.display = "none";
+        _lastDetected = null;  // not actionable from this state
         return;
     }
 
@@ -254,15 +261,35 @@ function showDetectedGame(game, dupData = {}) {
         dupSpan.textContent = `\u26A0 Duplicate \u2014 ${sourceLabel}`;
         detectedDuplicate.appendChild(dupSpan);
         addBtn.disabled = true;
+        addBtn.removeAttribute("data-reason");
         addBtn.textContent = "Already Tracked";
+        _lastDetected = null;  // not actionable from this state
     } else {
-        detectedDuplicate.style.display = "none";
-        addBtn.disabled = false;
-        addBtn.innerHTML = `${icon("plus", { strokeWidth: 2.5 })} Add to Queue`;
+        _lastDetected = { game, dupData };
+        applyEnabledOrQueueFullState();
 
         if (dupData.warning) {
             appendBadge(detectedBadges, "Local check only", "warning");
         }
+    }
+}
+
+/**
+ * Render the addBtn for the "free + not duplicate" branch \u2014 either enabled
+ * for adding, or disabled with the "queue full" reason when the queue is at
+ * capacity. Called from showDetectedGame() initially and from updateQueueUI()
+ * whenever the queue size changes while the popup is open.
+ */
+function applyEnabledOrQueueFullState() {
+    detectedDuplicate.style.display = "none";
+    if (currentQueueSize >= QUEUE_MAX) {
+        addBtn.disabled = true;
+        addBtn.dataset.reason = "queue-full";
+        addBtn.textContent = "Queue full \u2014 push first";
+    } else {
+        addBtn.disabled = false;
+        addBtn.removeAttribute("data-reason");
+        addBtn.innerHTML = `${icon("plus", { strokeWidth: 2.5 })} Add to Queue`;
     }
 }
 
@@ -289,12 +316,18 @@ async function loadQueueStatus() {
 }
 
 function updateQueueUI(size) {
+    currentQueueSize = size;
     queueCount.textContent = size;
     const pct = (size / QUEUE_MAX) * 100;
     queueBar.style.width = `${pct}%`;
     queueBar.className = "queue-bar-fill" +
         (pct >= 100 ? " full" : pct >= 80 ? " warning" : "");
     pushBtn.disabled = size === 0;
+
+    // Reactive: if the popup is showing a free + non-duplicate detected game,
+    // flip addBtn between "Add to Queue" and "Queue full — push first" as
+    // capacity changes (queue cleared in another tab, pushed, etc.).
+    if (_lastDetected) applyEnabledOrQueueFullState();
 }
 
 async function loadActivity() {
@@ -344,16 +377,17 @@ function bindEvents() {
         const addResp = await sendMessage(MSG.ADD_TO_QUEUE, resp.data);
 
         if (addResp?.ok) {
+            _lastDetected = null;  // freeze button \u2014 don't let updateQueueUI override "Added"
             addBtn.innerHTML = `\u2713 Added`;
+            addBtn.removeAttribute("data-reason");
             addBtn.classList.remove("btn-success");
             addBtn.classList.add("btn-ghost");
             updateQueueUI(addResp.data.queueSize);
             showToast(`Added: ${resp.data.name || "Game"}`, "success");
             await loadActivity();
         } else {
-            addBtn.disabled = false;
-            addBtn.innerHTML = `${icon("plus", { strokeWidth: 2.5 })} Add to Queue`;
             showToast(addResp?.error || "Failed to add", "error");
+            await loadQueueStatus();  // re-render addBtn (may now show "Queue full")
         }
     });
 

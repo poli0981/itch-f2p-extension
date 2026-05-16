@@ -12,7 +12,7 @@
  *   - No anti-cheat related handlers
  */
 
-import {MSG} from "../shared/constants.js";
+import {ITCH_GAME_URL_RE, MSG, QUEUE_MAX} from "../shared/constants.js";
 import {invalidateSettingsCache, loadQueue, loadSettings, saveSettings, storageClearAll} from "../shared/storage.js";
 import {clearLogs, exportLogsJSON, getLogs, logError, logInfo, logWarn} from "../shared/logger.js";
 import {extractGameId} from "../shared/utils.js";
@@ -46,6 +46,17 @@ const detectedGames = new Map ();
 chrome.tabs.onRemoved.addListener ((tabId) => {
     detectedGames.delete (tabId);
 });
+
+// ── Auto-collect serialization ──
+// Chain promises so addToQueue calls from concurrent tabs don't race
+// (load → push → save needs to be atomic per-extension).
+let _autoCollectChain = Promise.resolve ();
+
+function serializeAutoCollect (fn) {
+    const next = _autoCollectChain.then (fn, fn);
+    _autoCollectChain = next.catch (() => {}); // swallow so chain survives
+    return next;
+}
 
 // ── Badge ──
 
@@ -97,6 +108,11 @@ async function handleMessage (message, sender) {
             const tabId = sender.tab?.id;
             if (tabId && data) detectedGames.set (tabId, data);
             return {ok: true};
+        }
+
+        // ── Content script: request auto-collect ──
+        case MSG.REQUEST_AUTO_COLLECT: {
+            return await handleAutoCollect (data);
         }
 
         // ── Popup: get detected game ──
@@ -275,6 +291,82 @@ async function handleMessage (message, sender) {
             logWarn ("sw", `Unknown message type: ${type}`);
             return {ok: false, error: `Unknown message type: ${type}`};
     }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Auto-collect handler
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Decide what to do with a detected game and (if appropriate) add it.
+ * Returns a reply describing the outcome for the content script to toast.
+ *
+ * Possible replies:
+ *   {ok:true, skip:true, reason}                                  → no toast
+ *   {ok:true, kind:"paid"|"dup"|"queue_full"|"error", name}       → info toast
+ *   {ok:true, kind:"added", name, url}                            → success toast with Undo
+ */
+async function handleAutoCollect (data) {
+    if (!data || !data.url) return {ok: true, skip: true, reason: "no_data"};
+
+    const settings = await loadSettings ();
+    if (!settings.auto_collect) return {ok: true, skip: true, reason: "disabled"};
+
+    // Strict URL gate: only canonical itch.io game URLs (creator.itch.io/slug).
+    // Detector also runs a DOM-based isGamePage() check; this regex is a
+    // belt-and-suspenders check against future detector heuristic changes.
+    if (!ITCH_GAME_URL_RE.test (data.url)) {
+        return {ok: true, skip: true, reason: "not_game_page"};
+    }
+
+    const name = data.name || "";
+
+    // Paid game → no add, optional toast
+    if (data.is_free === false) {
+        return settings.auto_collect_show_paid_toast
+               ? {ok: true, kind: "paid", name}
+               : {ok: true, skip: true, reason: "paid_toast_disabled"};
+    }
+
+    return serializeAutoCollect (async () => {
+        // Duplicate check — refuse to add if verification fails (don't risk duplicates).
+        let dup;
+        try {
+            dup = await checkDuplicate (data.url);
+        }
+        catch (err) {
+            await logWarn ("queue", `Auto-collect dedup check failed: ${err.message || err}`, {url: data.url});
+            return {ok: true, kind: "error", name, reason: "verify_failed"};
+        }
+
+        if (dup && dup.isDuplicate) {
+            return settings.auto_collect_show_dup_toast
+                   ? {ok: true, kind: "dup", name, source: dup.source}
+                   : {ok: true, skip: true, reason: "dup_toast_disabled"};
+        }
+
+        const size = await getQueueSize ();
+        if (size >= QUEUE_MAX) {
+            return {ok: true, kind: "queue_full", name};
+        }
+
+        const result = await addToQueue (data);
+        if (!result.ok) {
+            // Could be a local-dup race (another tab added moments ago)
+            if ((result.error || "").toLowerCase ().includes ("already")) {
+                return settings.auto_collect_show_dup_toast
+                       ? {ok: true, kind: "dup", name, source: "queue"}
+                       : {ok: true, skip: true, reason: "dup_toast_disabled"};
+            }
+            return {ok: true, kind: "error", name, reason: result.error || "add_failed"};
+        }
+
+        await updateBadge ();
+        checkAutoPush ();
+        await logInfo ("queue", `Auto-collected: ${name || data.url}`, {url: data.url, trigger: "auto"});
+
+        return {ok: true, kind: "added", name, url: result.data?.entry?.url || data.url};
+    });
 }
 
 updateBadge ();
