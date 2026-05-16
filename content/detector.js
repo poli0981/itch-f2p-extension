@@ -475,4 +475,46 @@
             if (chrome.runtime.lastError) return;
         }
     );
+
+    // ════════════════════════════════════════════════════════════
+    // Auto-collect: ask SW to add (if enabled) and render result toast
+    // ════════════════════════════════════════════════════════════
+
+    chrome.runtime.sendMessage(
+        { type: "REQUEST_AUTO_COLLECT", data: gameData },
+        (reply) => {
+            if (chrome.runtime.lastError) return;
+            if (!reply || !reply.ok || reply.skip || !reply.kind) return;
+
+            const toast = window.__itchF2P && window.__itchF2P.toast;
+            if (!toast) return;
+
+            const { kind, name, url: addedUrl } = reply;
+
+            if (kind === "added" && addedUrl) {
+                toast.show({
+                    kind,
+                    name,
+                    action: {
+                        label: "Undo",
+                        onClick: () => {
+                            chrome.runtime.sendMessage(
+                                { type: "REMOVE_FROM_QUEUE", data: { url: addedUrl } },
+                                () => {
+                                    if (chrome.runtime.lastError) return;
+                                    toast.show({
+                                        kind: "removed",
+                                        name,
+                                        dedupKey: `${location.href}::undo-confirm`,
+                                    });
+                                }
+                            );
+                        },
+                    },
+                });
+            } else {
+                toast.show({ kind, name });
+            }
+        }
+    );
 })();

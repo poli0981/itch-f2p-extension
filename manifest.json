@@ -1,7 +1,7 @@
 {
   "manifest_version" : 3 ,
   "name"             : "itch.io F2P Tracker" ,
-  "version"          : "1.8.1" ,
+  "version"          : "1.9.0" ,
   "description"      : "Detect and track free itch.io games. Companion extension for free-itch-games-list." ,
   "permissions"      : [
     "storage" ,
@@ -24,6 +24,7 @@
         "*://*.itch.io/*"
       ] ,
       "js"      : [
+        "content/toast.js" ,
         "content/detector.js"
       ] ,
       "run_at"  : "document_idle"

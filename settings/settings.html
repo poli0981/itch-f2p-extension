@@ -232,6 +232,59 @@
         </div>
     </section>
 
+    <!-- Auto-collection -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <polyline points = "23 4 23 10 17 10"/>
+                <path d = "M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            Auto-collection
+        </h2>
+        <div class = "toggle-row">
+            <label class = "toggle-label" for = "auto_collect">
+                Auto-collect free games
+                <span class = "field-hint" style = "display:block; margin-top:2px">
+                    When you visit an itch.io game page, free games are added to the queue automatically
+                    and a toast appears in the bottom-right of the page. Duplicates are skipped.
+                    Disabled by default — turn on if you want hands-free tracking.
+                </span>
+            </label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "auto_collect">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
+        <div class = "toggle-row" style = "margin-top:12px">
+            <label class = "toggle-label" for = "auto_collect_show_paid_toast">
+                Show "not free" toast
+                <span class = "field-hint" style = "display:block; margin-top:2px">
+                    Show a toast when the visited game is paid. Turn off to silence paid-game notifications.
+                </span>
+            </label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "auto_collect_show_paid_toast">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
+        <div class = "toggle-row" style = "margin-top:12px">
+            <label class = "toggle-label" for = "auto_collect_show_dup_toast">
+                Show "already in database" toast
+                <span class = "field-hint" style = "display:block; margin-top:2px">
+                    Show a toast when the visited game is already tracked (in queue or remote).
+                    Turn off to silence duplicate notifications.
+                </span>
+            </label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "auto_collect_show_dup_toast">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
+    </section>
+
     <!-- Cache -->
     <section class = "settings-section">
         <h2 class = "section-heading">

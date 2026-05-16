@@ -202,6 +202,16 @@ body {
     justify-content : center;
 }
 
+/* ── Add-button "Queue full" state ── */
+/* Distinguishes "can't add because queue is full" from a generic disabled. */
+.btn[data-reason="queue-full"]:disabled {
+    background   : rgba(231, 76, 60, 0.15);
+    color        : var(--accent-red);
+    border-color : rgba(231, 76, 60, 0.3);
+    opacity      : 1;  /* override default disabled fade — keep the warning legible */
+    cursor       : not-allowed;
+}
+
 /* ── Activity List ── */
 .activity-list {
     display        : flex;

@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-05-16
+
+### Added
+
+- **Auto-collection of free games** (opt-in via Settings → Auto-collection)
+    - Visit an itch.io game page and the extension automatically detects, dedups, and adds free games to the queue
+      without needing to open the popup
+    - In-page toast notifications appear in the bottom-right of the game page using a Shadow-DOM-isolated layer
+      (immune to itch.io's stylesheet)
+    - Five toast kinds: `Added` (with Undo button), `Removed` (Undo confirmation), `Not free`, `Already in database`,
+      `Queue full (150/150) — push first`, and `Could not verify — skipped` (when remote dedup fails)
+    - Per-URL session dedup — refreshing the same tab does not re-fire toasts
+    - Three independent toggles: master `auto_collect` (default OFF), `auto_collect_show_paid_toast`,
+      `auto_collect_show_dup_toast`
+    - Strict URL gate via `ITCH_GAME_URL_RE` regex on top of detector's DOM-based `isGamePage()` — non-game pages
+      (profiles, jams, search) never trigger auto-add
+    - Concurrent auto-adds from multiple tabs are serialized through a promise chain in the service worker to keep
+      `loadQueue → push → saveQueue` atomic
+    - Auto-add refuses to proceed when the remote dedup verification fails, to avoid creating duplicates in the
+      data repo
+    - Auto-collected entries logged with `trigger: "auto"` for audit trail
+
+- **Queue-full block in popup**
+    - When the queue is at capacity (150/150), the "Add to Queue" button is preemptively disabled with a red
+      `Queue full — push first` label instead of failing silently on click
+    - The button reactively re-enables when the queue drops below capacity (queue cleared, pushed, or deduped in
+      another tab) via the existing storage change listener
+
+### Changed
+
+- `popup.js` now tracks `currentQueueSize` and `_lastDetected` in module scope so the add button can react to
+  queue capacity changes while the popup is open
+- `manifest.json` content_scripts now declares `content/toast.js` before `content/detector.js` so the toast layer
+  is available when the detector calls it
+
+[1.9.0]: https://github.com/poli0981/itch-f2p-extension/releases/tag/v1.9.0
+
 ## [1.0.0] - 2026-03-26
 
 ### Added
