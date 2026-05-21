@@ -9,7 +9,7 @@
 
 import {DEFAULT_SETTINGS, MSG, QUEUE_MAX} from "../shared/constants.js";
 import {formatTime, makeQueueEntry} from "../shared/utils.js";
-import {$, sendMessage, showToast, initTheme, getThemeMode, setThemeMode} from "../shared/ui.js";
+import {$, sendMessage, showToast, initTheme, getThemeMode, setThemeMode, initScrollToTop} from "../shared/ui.js";
 
 // Apply theme as early as possible to avoid flash
 initTheme ();
@@ -547,6 +547,7 @@ async function init () {
     await loadSettingsIntoForm ();
     await syncThemePicker ();
     bindEvents ();
+    initScrollToTop ();
     refreshStats ();
 
     // About & Support: show current version from manifest

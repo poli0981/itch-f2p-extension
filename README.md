@@ -39,6 +39,7 @@ repository.
 - **Auto-push** when queue reaches a configurable threshold
 - **Structured logging** with level/category filtering and JSON export
 - **Dark theme UI** inspired by itch.io's design language
+- **Scroll-to-top button** on long Queue and Settings pages
 
 ## Screenshots
 
