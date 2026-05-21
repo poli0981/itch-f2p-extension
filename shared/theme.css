@@ -575,3 +575,38 @@ a:hover { color : var(--accent-hover); }
 .ext-footer a { color : var(--text-muted); text-decoration : underline; }
 
 .ext-footer a:hover { color : var(--accent); }
+
+/* ── Scroll-to-top button ── */
+.scroll-top-btn {
+    position        : fixed; bottom : var(--space-xl); right : var(--space-xl);
+    z-index         : 50;
+    width           : 40px; height : 40px; padding : 0;
+    display         : inline-flex; align-items : center; justify-content : center;
+    background      : var(--bg-card); color : var(--text-secondary);
+    border          : 1px solid var(--border-strong); border-radius : var(--radius-full);
+    box-shadow      : var(--shadow-lg); cursor : pointer;
+    opacity         : 0; pointer-events : none;
+    transform       : translateY(12px) scale(0.9);
+    transition      : opacity var(--transition),
+                      transform var(--transition),
+                      background var(--transition-fast),
+                      color var(--transition-fast),
+                      border-color var(--transition-fast);
+}
+
+.scroll-top-btn.visible { opacity : 1; transform : translateY(0) scale(1); pointer-events : auto; }
+
+.scroll-top-btn:hover {
+    background : var(--bg-hover); color : var(--accent); border-color : var(--accent);
+}
+
+.scroll-top-btn:active { transform : scale(0.92); }
+
+.scroll-top-btn:focus-visible {
+    outline    : none;
+    box-shadow : var(--shadow-lg), 0 0 0 3px var(--accent-glow);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .scroll-top-btn { transition : opacity var(--transition-fast); }
+}

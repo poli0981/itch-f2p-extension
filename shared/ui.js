@@ -12,6 +12,8 @@
  *   - Tab singleton (openOrFocusTab) — focus existing tab if found, else create
  */
 
+import { icon } from "./icons.js";
+
 /**
  * querySelector shortcut.
  * @param {string} selector
@@ -467,4 +469,47 @@ export async function openOrFocusTab (relativeUrl) {
 
     // No existing tab found, or getContexts unavailable (Chrome < 116) — create new
     return chrome.tabs.create ({url: fullUrl});
+}
+
+// ════════════════════════════════════════════════════════════
+// Scroll-to-top button
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Create a floating "scroll to top" button fixed to the bottom-right corner.
+ * It fades in once the page is scrolled past `threshold` pixels and scrolls
+ * back to the top on click. Respects prefers-reduced-motion. Call once per
+ * page, after the DOM is ready (popup is too short to need it).
+ *
+ * @param {object} [opts]
+ * @param {number} [opts.threshold=320] - Scroll offset (px) before the button shows
+ */
+export function initScrollToTop (opts = {}) {
+    const {threshold = 320} = opts;
+
+    const btn = document.createElement ("button");
+    btn.type = "button";
+    btn.className = "scroll-top-btn";
+    btn.title = "Scroll to top";
+    btn.setAttribute ("aria-label", "Scroll to top");
+    btn.innerHTML = icon ("arrow-up", {size: 20, strokeWidth: 2.5});
+    document.body.appendChild (btn);
+
+    btn.addEventListener ("click", () => {
+        const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        window.scrollTo ({top: 0, behavior: reduce ? "auto" : "smooth"});
+    });
+
+    // Throttle the scroll handler through requestAnimationFrame.
+    let ticking = false;
+    const sync = () => {
+        btn.classList.toggle ("visible", window.scrollY > threshold);
+        ticking = false;
+    };
+    window.addEventListener ("scroll", () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame (sync);
+    }, {passive: true});
+    sync ();
 }

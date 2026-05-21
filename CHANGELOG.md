@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.10.0] - 2026-05-21
+
+### Added
+
+- **Scroll-to-top button** on the Queue and Settings pages — a floating up-arrow button appears in
+  the bottom-right corner once the page is scrolled past ~320px and smoothly scrolls back to the top
+  on click. Respects `prefers-reduced-motion`, is keyboard-accessible, and follows the active
+  light/dark theme.
+
+[1.10.0]: https://github.com/poli0981/itch-f2p-extension/releases/tag/v1.10.0
+
 ## [1.9.1] - 2026-05-21
 
 ### Changed

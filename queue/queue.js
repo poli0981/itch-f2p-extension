@@ -16,7 +16,7 @@
  */
 
 import { MSG } from "../shared/constants.js";
-import { sendMessage, showToast, initTheme } from "../shared/ui.js";
+import { sendMessage, showToast, initTheme, initScrollToTop } from "../shared/ui.js";
 import { icon } from "../shared/icons.js";
 import { dom, selection, state } from "./queue-state.js";
 import { renderQueue } from "./queue-render.js";
@@ -162,6 +162,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 document.addEventListener("DOMContentLoaded", async () => {
+    initScrollToTop();
     await loadQueue();
     autoTriggerDedup("queue_open").catch(() => {});
 });
