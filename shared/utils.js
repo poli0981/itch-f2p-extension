@@ -62,7 +62,7 @@ export function extractGameId(url) {
  * Get current UTC timestamp in ISO format.
  * @returns {string}
  */
-export function nowISO() {
+function nowISO() {
     return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 }
 

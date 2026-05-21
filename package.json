@@ -1,6 +1,6 @@
 {
     "name": "itch-f2p-extension",
-    "version": "1.9.0",
+    "version": "1.9.1",
     "private": true,
     "type": "module",
     "description": "itch.io F2P Tracker — Chrome extension for tracking free itch.io games",
@@ -8,6 +8,7 @@
     "scripts": {
         "lint": "eslint .",
         "lint:fix": "eslint . --fix",
+        "knip": "knip",
         "format": "prettier --write \"**/*.{js,mjs,html,css,json,md,yml,yaml}\"",
         "format:check": "prettier --check \"**/*.{js,mjs,html,css,json,md,yml,yaml}\"",
         "build:detector": "node scripts/build-detector.js",
@@ -22,6 +23,7 @@
         "archiver": "^8.0.0",
         "eslint": "^10.3.0",
         "globals": "^17.6.0",
+        "knip": "^6.14.1",
         "prettier": "^3.0.0"
     },
     "engines": {

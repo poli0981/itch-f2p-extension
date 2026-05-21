@@ -121,12 +121,15 @@ repository.
 ```
 itch-f2p-extension/
 ├── manifest.json              # MV3 manifest
+├── knip.json                  # Dead-code detection config
 ├── LICENSE                    # GPL-3.0-only
 ├── background/
 │   ├── sw.js                  # Service worker entry
 │   ├── github-api.js          # GitHub REST client
 │   ├── gpg-signer.js          # GPG key management + signing
-│   ├── push-handler.js        # Push routing (url_only / full_object)
+│   ├── push-handler.js        # Push entry (pushQueue / pushQueueUnsigned)
+│   ├── push-strategies.js     # Push execution paths + dispatcher
+│   ├── push-serialize.js      # Entry / index serialization + merge
 │   ├── queue-manager.js       # CRUD, validation, cap
 │   └── dedup-checker.js       # URL-based deduplication
 ├── content/
@@ -138,7 +141,7 @@ itch-f2p-extension/
 │   ├── utils.js               # URL normalization, helpers
 │   └── theme.css              # Design system (itch.io palette)
 ├── popup/                     # Popup UI
-├── queue/                     # Queue page UI
+├── queue/                     # Queue page UI (bootstrap + state/render/actions)
 ├── settings/                  # Settings page UI
 ├── lib/
 │   └── openpgp.min.mjs        # OpenPGP.js v6 (LGPL-3.0)

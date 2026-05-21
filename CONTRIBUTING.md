@@ -115,6 +115,11 @@ lib/          — Vendored libraries (openpgp.js only)
 docs/         — Legal documents
 ```
 
+Large pages and handlers are split into focused single-purpose modules — e.g.
+`queue/` is `queue.js` (bootstrap) + `queue-state` + `queue-render` + `queue-actions`,
+and `background/push-*` separates the push entry, strategies, and serialization.
+Keep new modules small and single-purpose; run `npm run knip` to catch dead code.
+
 ### Key Conventions
 
 - **Identity key**: normalized URL (`https://creator.itch.io/slug`) — not numeric ID
