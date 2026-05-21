@@ -11,9 +11,6 @@
  * Usage (returns HTML string suitable for .innerHTML):
  *     button.innerHTML = icon("plus") + " Add";
  *
- * Or as an Element (for append):
- *     button.appendChild(iconEl("x"));
- *
  * All icons use currentColor for stroke so they inherit from the parent,
  * work with both light and dark themes, and respond to :hover/:disabled
  * state changes automatically.
@@ -102,16 +99,4 @@ export function icon (name, opts = {}) {
     return `<svg${cls} width="${size}" height="${size}" viewBox="0 0 24 24" ` +
            `fill="none" stroke="currentColor" stroke-width="${strokeWidth}" ` +
            `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
-}
-
-/**
- * Return an icon as an SVG element (for appendChild).
- * @param {string} name
- * @param {object} [opts] - Same options as icon()
- * @returns {SVGElement|null}
- */
-export function iconEl (name, opts = {}) {
-    const wrapper = document.createElement ("template");
-    wrapper.innerHTML = icon (name, opts).trim ();
-    return wrapper.content.firstElementChild;
 }

@@ -6,7 +6,7 @@
  * Shared UI helpers for extension pages (popup, queue, settings).
  *
  * Consolidates helpers previously duplicated in each UI module:
- *   - DOM selection ($, $$)
+ *   - DOM selection ($)
  *   - Message passing to service worker (sendMessage)
  *   - Toast notifications (showToast)
  *   - Tab singleton (openOrFocusTab) — focus existing tab if found, else create
@@ -18,13 +18,6 @@
  * @returns {HTMLElement|null}
  */
 export const $ = (selector) => document.querySelector (selector);
-
-/**
- * querySelectorAll returning a real array.
- * @param {string} selector
- * @returns {HTMLElement[]}
- */
-export const $$ = (selector) => [...document.querySelectorAll (selector)];
 
 /**
  * Send a message to the extension service worker.
@@ -322,7 +315,7 @@ export function createCombobox (opts) {
  * - "dark" / "light": explicit user choice (persisted)
  * - "system": follow prefers-color-scheme (default)
  */
-export const THEME_MODES = ["system", "dark", "light"];
+const THEME_MODES = ["system", "dark", "light"];
 const THEME_STORAGE_KEY = "ui:theme";
 
 /**

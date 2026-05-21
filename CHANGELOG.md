@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.1] - 2026-05-21
+
+### Changed
+
+- **Internal refactor — no behavior change.** Split the two largest source files into focused
+  single-purpose modules:
+    - `background/push-handler.js` → `push-handler.js` (public `pushQueue` / `pushQueueUnsigned`),
+      `push-strategies.js` (push execution paths + dispatcher), `push-serialize.js` (entry / index
+      serialization + JSON merge)
+    - `queue/queue.js` → `queue.js` (event-binding bootstrap), `queue-state.js` (shared DOM refs +
+      view state), `queue-render.js` (grid / card rendering), `queue-actions.js` (drag-drop, bulk
+      selection, push / remove handlers)
+- Added [knip](https://knip.dev) for dead-code detection — `knip.json` config plus a `npm run knip`
+  script
+
+### Removed
+
+- Unused exports surfaced by knip: `iconEl` (`shared/icons.js`) and `$$` (`shared/ui.js`). Dropped
+  the redundant `export` keyword from `log`, `nowISO`, and `THEME_MODES` (still used internally)
+
+[1.9.1]: https://github.com/poli0981/itch-f2p-extension/releases/tag/v1.9.1
+
 ## [1.9.0] - 2026-05-16
 
 ### Added

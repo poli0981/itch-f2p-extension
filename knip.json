@@ -1,0 +1,14 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "entry": [
+        "background/sw.js",
+        "content/detector.js",
+        "content/toast.js",
+        "popup/popup.js",
+        "queue/queue.js",
+        "settings/settings.js",
+        "scripts/**/*.js"
+    ],
+    "project": ["**/*.{js,mjs}"],
+    "ignore": ["lib/**"]
+}

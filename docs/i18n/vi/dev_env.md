@@ -39,6 +39,7 @@ Tất cả script ở `package.json` và `scripts/`:
 | --------------------------- | --------------------------------------------------------- |
 | `npm run lint`              | ESLint flat-config check                                  |
 | `npm run lint:fix`          | ESLint auto-fix                                           |
+| `npm run knip`              | Phát hiện dead-code (file / export không dùng)            |
 | `npm run format`            | Prettier write                                            |
 | `npm run validate:manifest` | Validate `manifest.json` theo MV3                         |
 | `npm run build:detector`    | Inject `shared/nsfw-keywords.js` vào `content/detector.js` |

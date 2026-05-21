@@ -15,7 +15,7 @@ function shouldLog (level, minLevel) {
     return LOG_LEVELS.indexOf (level) >= LOG_LEVELS.indexOf (minLevel);
 }
 
-export async function log (level, category, message, data = undefined) {
+async function log (level, category, message, data = undefined) {
     try {
         const settings = await loadSettings ();
         const minLevel = settings.log_level || "info";

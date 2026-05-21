@@ -40,6 +40,7 @@ All scripts live in `package.json` and `scripts/`:
 | --------------------------- | --------------------------------------------------------- |
 | `npm run lint`              | ESLint flat-config check                                  |
 | `npm run lint:fix`          | ESLint auto-fix                                           |
+| `npm run knip`              | Dead-code detection (unused files / exports)              |
 | `npm run format`            | Prettier write                                            |
 | `npm run validate:manifest` | Validate `manifest.json` against MV3 rules                |
 | `npm run build:detector`    | Inject `shared/nsfw-keywords.js` into `content/detector.js` |
