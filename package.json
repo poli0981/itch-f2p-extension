@@ -21,9 +21,9 @@
     },
     "devDependencies": {
         "archiver": "^8.0.0",
-        "eslint": "^10.3.0",
+        "eslint": "^10.4.1",
         "globals": "^17.6.0",
-        "knip": "^6.14.1",
+        "knip": "^6.16.1",
         "prettier": "^3.0.0"
     },
     "engines": {
