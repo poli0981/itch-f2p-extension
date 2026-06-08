@@ -21,6 +21,7 @@ const FIELD_IDS = [
     "auto_push_threshold", "commit_prefix", "push_format",
     "auto_dedup_queue",
     "auto_collect", "auto_collect_show_paid_toast", "auto_collect_show_dup_toast",
+    "search_detect_enabled",
     "cache_ttl_minutes",
     "log_level", "log_max_entries",
 ];

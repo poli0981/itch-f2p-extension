@@ -24,6 +24,9 @@ Browse any game page on itch.io — the extension automatically detects whether 
 (genre, developer, platforms, tags, rating, NSFW status, and more), and lets you queue games for submission to a GitHub
 repository.
 
+On itch.io **browse/search grids** (`itch.io/games/…`) you can also hover over a game to detect and queue it without
+opening its page. See **[How Detection Works](docs/DETECTION.md)** for the full technical breakdown.
+
 **Two push modes:**
 
 - **URL only** → pushes game URLs to `scripts/temp_link.json` (backend scrapes full details later)
@@ -32,6 +35,7 @@ repository.
 ## Features
 
 - **Auto-detection** of 17+ metadata fields from itch.io game pages
+- **Search-page hover detection** — add free games straight from `itch.io/games/…` browse grids by hovering, no need to open each page
 - **Free/Paid classification** via `buy_row` and price tag parsing
 - **NSFW detection** via keyword scanning and content warning detection
 - **Deduplication** against remote `game_info.json` + `temp_link.json` + local queue
@@ -99,6 +103,9 @@ repository.
 
 ## Detected Fields
 
+> For the exact selectors, the browse-page cell structure, and the free/sale/paid logic, see
+> **[How Detection Works](docs/DETECTION.md)** ([Tiếng Việt](docs/i18n/vi/DETECTION.md)).
+
 | Field        | Source                     | Notes                          |
 |--------------|----------------------------|--------------------------------|
 | Name         | `h1.game_title`            | Game display name              |
@@ -134,7 +141,9 @@ itch-f2p-extension/
 │   ├── queue-manager.js       # CRUD, validation, cap
 │   └── dedup-checker.js       # URL-based deduplication
 ├── content/
-│   └── detector.js            # itch.io page parser (IIFE)
+│   ├── toast.js               # in-page toast layer (Shadow DOM, IIFE)
+│   ├── detector.js            # game-page parser (IIFE)
+│   └── search-detector.js     # browse/search-page parser + hover-to-add (IIFE)
 ├── shared/
 │   ├── constants.js           # URLs, limits, field definitions
 │   ├── storage.js             # chrome.storage wrapper
