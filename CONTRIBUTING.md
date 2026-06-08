@@ -140,6 +140,7 @@ Before submitting a PR, verify:
 - [ ] Tested detection on a free itch.io game page
 - [ ] Tested detection on a paid itch.io game page (should show "Not Free")
 - [ ] Tested detection on a non-game itch.io page (should show "No game detected")
+- [ ] Tested hover-to-add on a browse page (`itch.io/games/free`) with Search-page detection enabled
 - [ ] Tested queue add / remove / edit operations
 - [ ] Tested push to GitHub (real or test repo)
 - [ ] Tested with GPG signing enabled (if applicable)
@@ -151,15 +152,19 @@ Before submitting a PR, verify:
 
 Use these page types to verify detection:
 
-| Page Type     | Example Pattern               | Expected                                 |
-|---------------|-------------------------------|------------------------------------------|
-| Free game     | `creator.itch.io/free-game`   | Detected, "Free" badge                   |
-| Paid game     | `creator.itch.io/paid-game`   | Detected, "Not Free" badge, Add disabled |
-| Browser game  | `creator.itch.io/html5-game`  | Detected (no buy_row = free)             |
-| NSFW game     | Game with content warning     | Detected, "NSFW" badge                   |
-| Game jam page | `itch.io/jam/jam-name`        | Not detected (correct)                   |
-| Profile page  | `creator.itch.io`             | Not detected (correct)                   |
-| Devlog        | `creator.itch.io/game/devlog` | Not detected (correct)                   |
+| Page Type          | Example Pattern               | Expected                                        |
+|--------------------|-------------------------------|-------------------------------------------------|
+| Free game          | `creator.itch.io/free-game`   | Detected, "Free" badge                          |
+| Paid game          | `creator.itch.io/paid-game`   | Detected, "Not Free" badge, Add disabled        |
+| Browser game       | `creator.itch.io/html5-game`  | Detected (no buy_row = free)                     |
+| NSFW game          | Game with content warning     | Detected, "NSFW" badge                          |
+| Game jam page      | `itch.io/jam/jam-name`        | Not detected (correct)                          |
+| Profile page       | `creator.itch.io`             | Not detected (correct)                          |
+| Devlog             | `creator.itch.io/game/devlog` | Not detected (correct)                          |
+| Browse grid (free) | `itch.io/games/free`          | Hover free cell → added + Undo toast            |
+| Browse −100% sale  | `$0` cell in `itch.io/games`  | Chip "Sale -100%", not added                    |
+| Browse paid cell   | priced cell in `itch.io/games`| Chip "Paid", not added                          |
+| Browse (rejected)  | `itch.io/games/on-sale`       | Search-detector inactive (correct)              |
 
 ---
 

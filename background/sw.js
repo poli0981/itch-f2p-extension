@@ -115,6 +115,11 @@ async function handleMessage (message, sender) {
             return await handleAutoCollect (data);
         }
 
+        // ── Content script: request search-page collect (hover on browse page) ──
+        case MSG.REQUEST_SEARCH_COLLECT: {
+            return await handleSearchCollect (data);
+        }
+
         // ── Popup: get detected game ──
         case "GET_DETECTED_GAME": {
             const tabId = data?.tabId;
@@ -319,14 +324,52 @@ async function handleAutoCollect (data) {
         return {ok: true, skip: true, reason: "not_game_page"};
     }
 
-    const name = data.name || "";
-
     // Paid game → no add, optional toast
     if (data.is_free === false) {
         return settings.auto_collect_show_paid_toast
-               ? {ok: true, kind: "paid", name}
+               ? {ok: true, kind: "paid", name: data.name || ""}
                : {ok: true, skip: true, reason: "paid_toast_disabled"};
     }
+
+    return collectFreeGame (data, {showDupToast: settings.auto_collect_show_dup_toast, trigger: "auto"});
+}
+
+/**
+ * Search-page collect: user hovered a free game cell on a browse page.
+ * Shares the add-core with auto-collect, but gated on its own opt-in setting.
+ * The hover is an explicit user action, so duplicates are always reported
+ * (a silent skip would look like nothing happened).
+ */
+async function handleSearchCollect (data) {
+    if (!data || !data.url) return {ok: true, skip: true, reason: "no_data"};
+
+    const settings = await loadSettings ();
+    if (!settings.search_detect_enabled) return {ok: true, skip: true, reason: "disabled"};
+
+    if (!ITCH_GAME_URL_RE.test (data.url)) {
+        return {ok: true, skip: true, reason: "not_game_page"};
+    }
+
+    if (data.is_free === false) {
+        return {ok: true, kind: "paid", name: data.name || ""};
+    }
+
+    return collectFreeGame (data, {showDupToast: true, trigger: "search"});
+}
+
+/**
+ * Add a detected free game to the queue atomically: dedup → queue-full → add.
+ * Serialized so concurrent calls (multiple tabs / rapid hovers) keep
+ * loadQueue → push → saveQueue atomic per-extension.
+ *
+ * @param {object} data            Detected game data (already verified free + valid URL)
+ * @param {object} opts
+ * @param {boolean} opts.showDupToast  Emit a "dup" reply (vs silent skip) on duplicate
+ * @param {"auto"|"search"} opts.trigger  Log trigger tag
+ * @returns {Promise<object>} reply for the content script to toast
+ */
+async function collectFreeGame (data, opts) {
+    const name = data.name || "";
 
     return serializeAutoCollect (async () => {
         // Duplicate check — refuse to add if verification fails (don't risk duplicates).
@@ -335,12 +378,12 @@ async function handleAutoCollect (data) {
             dup = await checkDuplicate (data.url);
         }
         catch (err) {
-            await logWarn ("queue", `Auto-collect dedup check failed: ${err.message || err}`, {url: data.url});
+            await logWarn ("queue", `Collect dedup check failed: ${err.message || err}`, {url: data.url});
             return {ok: true, kind: "error", name, reason: "verify_failed"};
         }
 
         if (dup && dup.isDuplicate) {
-            return settings.auto_collect_show_dup_toast
+            return opts.showDupToast
                    ? {ok: true, kind: "dup", name, source: dup.source}
                    : {ok: true, skip: true, reason: "dup_toast_disabled"};
         }
@@ -354,7 +397,7 @@ async function handleAutoCollect (data) {
         if (!result.ok) {
             // Could be a local-dup race (another tab added moments ago)
             if ((result.error || "").toLowerCase ().includes ("already")) {
-                return settings.auto_collect_show_dup_toast
+                return opts.showDupToast
                        ? {ok: true, kind: "dup", name, source: "queue"}
                        : {ok: true, skip: true, reason: "dup_toast_disabled"};
             }
@@ -363,7 +406,8 @@ async function handleAutoCollect (data) {
 
         await updateBadge ();
         checkAutoPush ();
-        await logInfo ("queue", `Auto-collected: ${name || data.url}`, {url: data.url, trigger: "auto"});
+        const label = opts.trigger === "auto" ? "Auto-collected" : "Search-collected";
+        await logInfo ("queue", `${label}: ${name || data.url}`, {url: data.url, trigger: opts.trigger});
 
         return {ok: true, kind: "added", name, url: result.data?.entry?.url || data.url};
     });

@@ -285,6 +285,35 @@
         </div>
     </section>
 
+    <!-- Search-page detection -->
+    <section class = "settings-section">
+        <h2 class = "section-heading">
+            <svg
+                    width = "18" height = "18" viewBox = "0 0 24 24" fill = "none" stroke = "currentColor"
+                    stroke-width = "2" stroke-linecap = "round"
+            >
+                <circle cx = "11" cy = "11" r = "8"/>
+                <line x1 = "21" y1 = "21" x2 = "16.65" y2 = "16.65"/>
+            </svg>
+            Search-page detection
+        </h2>
+        <div class = "toggle-row">
+            <label class = "toggle-label" for = "search_detect_enabled">
+                Detect &amp; add free games on browse pages
+                <span class = "field-hint" style = "display:block; margin-top:2px">
+                    On itch.io browse pages (itch.io/games/&hellip;), hover over a game and pause briefly &mdash;
+                    free games are detected and added to the queue automatically, with an Undo toast. A status
+                    chip flags paid / temporary &minus;100% sale / already-tracked games (these are not added).
+                    Disabled by default &mdash; turn on for hover-to-add without opening each page.
+                </span>
+            </label>
+            <label class = "toggle-switch">
+                <input type = "checkbox" id = "search_detect_enabled">
+                <span class = "toggle-slider"></span>
+            </label>
+        </div>
+    </section>
+
     <!-- Cache -->
     <section class = "settings-section">
         <h2 class = "section-heading">

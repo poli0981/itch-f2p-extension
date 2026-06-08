@@ -95,6 +95,9 @@ export const DEFAULT_SETTINGS = {
     auto_collect_show_paid_toast: true,
     auto_collect_show_dup_toast: true,
 
+    // Search-page detection (hover to add on browse pages)
+    search_detect_enabled: false,
+
     // Logging
     log_level: "info",
     log_max_entries: 500,
@@ -104,6 +107,7 @@ export const DEFAULT_SETTINGS = {
 export const MSG = {
     GAME_DETECTED:       "GAME_DETECTED",
     REQUEST_AUTO_COLLECT: "REQUEST_AUTO_COLLECT",
+    REQUEST_SEARCH_COLLECT: "REQUEST_SEARCH_COLLECT",
     GET_QUEUE:           "GET_QUEUE",
     ADD_TO_QUEUE:        "ADD_TO_QUEUE",
     REMOVE_FROM_QUEUE:   "REMOVE_FROM_QUEUE",

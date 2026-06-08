@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-06-08
+
+### Added
+
+- **Search-page hover detection** (opt-in via Settings → Search-page detection)
+    - On itch.io browse/search grids (`itch.io/games/…`), hover over a game and pause briefly (~400 ms) — free
+      games are detected, deduplicated, and added to the queue automatically, without opening each page
+    - A compact status chip on the cell reflects the outcome: `✓ Added`, `In database`, `Queue full`, plus
+      `Paid` and `Sale -100%` for games that are not added
+    - **"Real free" only** — games with no price tag are added; temporary `-100%` sales (`$0` via discount) are
+      flagged but skipped, keeping the companion list permanently free
+    - Reuses the bottom-right toast layer (Shadow-DOM isolated) with an **Undo** button on add; toast dedup is
+      keyed per-game so adding many games from one browse page works
+    - New content script `content/search-detector.js` parses game cells (`.game_cell`): URL, name, developer,
+      genre, tagline, platforms (from `.game_platform` icons), and thumbnail
+    - Page gate accepts `/games` browse pages and rejects priced/jam contexts (`store`, `on-sale`, `in-jam`,
+      `N-dollars-or-less`) and non-game sections
+    - Strict URL gate via `ITCH_GAME_URL_RE` plus the same serialized dedup → queue-full → add core shared with
+      auto-collect (no behavior change to auto-collect)
+    - `manifest.json` adds an explicit `*://itch.io/*` content-script match + host permission so the script
+      reliably runs on the bare-host browse grid (Chrome may prompt to re-confirm permissions on update)
+
+- **Technical detection docs** — [`docs/DETECTION.md`](docs/DETECTION.md) (and
+  [`docs/i18n/vi/DETECTION.md`](docs/i18n/vi/DETECTION.md)) explain exactly how detection works: the DOM
+  selectors, the browse-page cell structure with real HTML examples, the free/sale/paid logic, deduplication,
+  and maintenance notes
+
+### Changed
+
+- `scripts/build-detector.js` now injects the NSFW keyword array into both `content/detector.js` and
+  `content/search-detector.js`; CI verifies both stay in sync with `shared/nsfw-keywords.js`
+
+[1.11.0]: https://github.com/poli0981/itch-f2p-extension/releases/tag/v1.11.0
+
 ## [1.10.0] - 2026-05-21
 
 ### Added

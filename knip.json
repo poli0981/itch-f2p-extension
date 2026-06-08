@@ -3,6 +3,7 @@
     "entry": [
         "background/sw.js",
         "content/detector.js",
+        "content/search-detector.js",
         "content/toast.js",
         "popup/popup.js",
         "queue/queue.js",

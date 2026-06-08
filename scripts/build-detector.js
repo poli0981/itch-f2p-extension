@@ -20,9 +20,10 @@ import { NSFW_KEYWORDS } from "../shared/nsfw-keywords.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(__dirname, "..");
-const detectorPath = resolve(projectRoot, "content/detector.js");
 
-const source = readFileSync(detectorPath, "utf8");
+// Content scripts that inline the NSFW keyword array (MV3 content scripts
+// cannot use ES module imports, so the array is injected at build time).
+const targets = ["content/detector.js", "content/search-detector.js"];
 
 // Build the injected block with 4-space base indentation (matches detector.js style).
 const indent = "    ";
@@ -37,21 +38,26 @@ const replacement = [
 
 const markerRe = /^[ \t]*\/\/ NSFW_KEYWORDS_START[\s\S]*?\/\/ NSFW_KEYWORDS_END[ \t]*$/m;
 
-if (!markerRe.test(source)) {
-    console.error("✗ Marker block not found in content/detector.js");
-    console.error("  Expected:");
-    console.error("    // NSFW_KEYWORDS_START");
-    console.error("    ...");
-    console.error("    // NSFW_KEYWORDS_END");
-    process.exit(1);
+for (const rel of targets) {
+    const targetPath = resolve(projectRoot, rel);
+    const source = readFileSync(targetPath, "utf8");
+
+    if (!markerRe.test(source)) {
+        console.error(`✗ Marker block not found in ${rel}`);
+        console.error("  Expected:");
+        console.error("    // NSFW_KEYWORDS_START");
+        console.error("    ...");
+        console.error("    // NSFW_KEYWORDS_END");
+        process.exit(1);
+    }
+
+    const updated = source.replace(markerRe, replacement);
+
+    if (updated === source) {
+        console.log(`✓ ${rel} already up-to-date (${NSFW_KEYWORDS.length} keywords)`);
+        continue;
+    }
+
+    writeFileSync(targetPath, updated);
+    console.log(`✓ Injected ${NSFW_KEYWORDS.length} NSFW keywords into ${rel}`);
 }
-
-const updated = source.replace(markerRe, replacement);
-
-if (updated === source) {
-    console.log(`✓ detector.js already up-to-date (${NSFW_KEYWORDS.length} keywords)`);
-    process.exit(0);
-}
-
-writeFileSync(detectorPath, updated);
-console.log(`✓ Injected ${NSFW_KEYWORDS.length} NSFW keywords into content/detector.js`);

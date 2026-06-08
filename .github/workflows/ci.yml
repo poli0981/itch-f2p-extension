@@ -44,11 +44,11 @@ jobs:
       - name: Build detector (NSFW keywords injection)
         run: npm run build:detector
 
-      - name: Verify detector.js is in sync with shared/nsfw-keywords.js
+      - name: Verify detector scripts are in sync with shared/nsfw-keywords.js
         run: |
-          if ! git diff --exit-code content/detector.js; then
+          if ! git diff --exit-code content/detector.js content/search-detector.js; then
             echo ""
-            echo "::error::content/detector.js is out of sync with shared/nsfw-keywords.js"
+            echo "::error::content/detector.js or content/search-detector.js is out of sync with shared/nsfw-keywords.js"
             echo "Run 'npm run build:detector' locally and commit the result."
             exit 1
           fi
