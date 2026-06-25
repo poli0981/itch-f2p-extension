@@ -23,7 +23,7 @@
         "archiver": "^8.0.0",
         "eslint": "^10.5.0",
         "globals": "^17.6.0",
-        "knip": "^6.16.1",
+        "knip": "^6.17.1",
         "prettier": "^3.8.4"
     },
     "engines": {
